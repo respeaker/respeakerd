@@ -4,6 +4,14 @@
 
 ## 2. 如何编译
 
+### 2.1 依赖
+
+- json: https://github.com/nlohmann/json, 仅一个头文件
+- base64: https://github.com/tplgy/cppcodec, 仅一个头文件
+- gflags: https://gflags.github.io/gflags/, 命令行参数库, 已经编译成静态库
+- log4cplus: 日志库, 已经编译成静态库
+- asio: 待删除???
+
 ## 3. 运行参数
 
 ## 4. 协作开发约定
