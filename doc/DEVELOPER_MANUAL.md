@@ -36,7 +36,9 @@ respeakerd 暴露 unix domain socket 于/tmp/respeakerd.sock 文件. 此 socket 
 
 ### A.1 输出通道 json 格式
 
-{"audio": "base64编码的x毫秒音频数据", "hotword": true/false, "direction": 浮点数表示的方向角度}
+{"type": "audio", "data": "base64编码的x毫秒音频数据", "direction": 浮点数表示的方向角度}
+
+{"type": "event", "data": "hotword", "direction": 浮点数表示的方向角度}
 
 ### A.2 输入通道 json 格式
 
