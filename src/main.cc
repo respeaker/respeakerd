@@ -17,6 +17,7 @@
 #include <chain_nodes/vep_doa_kws_node.h>
 
 #include "json.hpp"
+#include "cppcodec/base64_default_rfc4648.hpp"
 
 // enable asio debugging
 // #ifndef NDEBUG

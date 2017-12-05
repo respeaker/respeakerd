@@ -30,6 +30,7 @@ pkg_check_modules(LIBRESPEAKER  REQUIRED  respeaker)
 include_directories(
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/libs
+    ${PROJECT_SOURCE_DIR}/libs/cppcodec
     ${PROJECT_SOURCE_DIR}/libs/asio/include
     ${PROJECT_SOURCE_DIR}/libs/log4cplus/include
     ${PROJECT_SOURCE_DIR}/libs/gflags/include
