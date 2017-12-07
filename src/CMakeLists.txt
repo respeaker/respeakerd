@@ -57,5 +57,5 @@ target_link_libraries(respeakerd
     ${LIBRESPEAKER_LIBRARIES}
 )
 
-install(PROGRAM respeakerd DESTINATION bin)
+install(PROGRAMS respeakerd DESTINATION bin)
 
