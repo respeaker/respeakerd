@@ -5,23 +5,31 @@ import os
 import logging
 import socket
 import json
+import threading
 
-logger = logging.getLogger(__file__)
+logger = logging.getLogger(__name__)
 
 SOCKET_FILE = '/tmp/respeakerd.sock'
+SOCKET_TIMEOUT = 1    # seconds
 
 class RespeakerdClient(object):
-    def __init__(self, timeout=1):
-        self.timeout = timeout
+    def __init__(self, timeout=None):
+        if timeout:
+            self.timeout = timeout
+        else:
+            self.timeout = SOCKET_TIMEOUT
+        
         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.lock = threading.Lock()    # protect self.sock object
         self.stop = False
         self.buff = ''
 
     def connect(self):
         logger.info('Start to connect to the socket: {} ...'.format(SOCKET_FILE))
         try:
-            self.sock.settimeout(self.timeout)
-            self.sock.connect(SOCKET_FILE)
+            with self.lock:
+                self.sock.settimeout(self.timeout)
+                self.sock.connect(SOCKET_FILE)
         except socket.error, msg:
             logger.error("Error when connect to the socket: {}".format(msg))
             sys.exit(1)
@@ -29,13 +37,17 @@ class RespeakerdClient(object):
             logger.error('Timeout when connect to the socket')
             sys.exit(1)
 
+        self.stop = False
+
     def close(self):
         self.stop = True
-        self.sock.close()
+        with self.lock:
+            self.sock.close()
     
     def blocking_send(self, json_obj):
         try:
-            self.sock.sendall(json.dump(json_obj))
+            with self.lock:
+                self.sock.sendall(json.dump(json_obj))
         except Exception, e:
             logger.error('Error when sendall: {}'.format(str(e)))
             return False
@@ -50,8 +62,9 @@ class RespeakerdClient(object):
         while not self.stop:
             chunk = ''
             try:
-                # will block to timeout
-                chunk = self.sock.recv(16)
+                with self.lock:
+                    # will block to timeout
+                    chunk = self.sock.recv(16)
             except socket.timeout:
                 continue
             except Exception, e:
