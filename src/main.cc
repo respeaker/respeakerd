@@ -140,6 +140,8 @@ int main(int argc, char *argv[])
 
     respeaker.reset(ReSpeaker::Create());
     respeaker->RegisterChainByHead(collector.get());
+    respeaker->RegisterDirectionReporterNode(vep_kws.get());
+    respeaker->RegisterHotwordDetectionNode(vep_kws.get());
     respeaker->RegisterOutputNode(vep_kws.get());
 
     
