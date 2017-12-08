@@ -11,12 +11,12 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstdio>
+#include <chrono>
 
 #include <respeaker.h>
 #include <chain_nodes/pulse_collector_node.h>
 #include <chain_nodes/vep_aec_bf_node.h>
 #include <chain_nodes/vep_doa_kws_node.h>
-
 
 #include "json.hpp"
 #include "cppcodec/base64_default_rfc4648.hpp"
@@ -29,17 +29,24 @@
 using namespace respeaker;
 using json = nlohmann::json;
 using base64 = cppcodec::base64_rfc4648;
+using SteadyClock = std::chrono::steady_clock;
+using TimePoint = std::chrono::time_point<SteadyClock>;
 
 #define SOCKET_FILE    "/tmp/respeakerd.sock"
 #define BLOCK_SIZE_MS    8
 #define RECV_BUFF_LEN    1024
+#define STOP_CAPTURE_TIMEOUT    30000    //millisecond
 
 static bool stop = false;
 static char recv_buffer[RECV_BUFF_LEN];
 
 void SignalHandler(int signal){
-  std::cerr << "Caught signal " << signal << ", terminating..." << std::endl;
-  stop = true;
+    if (signal == SIGPIPE){
+        std::cerr << "Caught signal SIGPIPE" << std::endl;
+        return;
+    }
+    std::cerr << "Caught signal " << signal << ", terminating..." << std::endl;
+    stop = true;
 }
 
 bool blocking_send(int client, std::string data)
@@ -85,10 +92,10 @@ std::string cut_line(int client)
         FD_SET(client, &readfds);                       
         nfds = select(client+1, &readfds, NULL, NULL, &tv);
         if(nfds < 0){
-            std::cerr << "select  error" << std::endl;                          
+            std::cerr << "select  error" << std::endl;
             return "";               
         }else if(nfds == 0){
-            std::cout << "timeout  error" << std::endl;
+            //std::cout << "timeout  error" << std::endl;
             return "";
         }else{
             int nread = recv(client, recv_buffer, RECV_BUFF_LEN, 0);
@@ -120,6 +127,7 @@ int main(int argc, char *argv[])
     sig_int_handler.sa_flags = 0;
     sigaction(SIGINT, &sig_int_handler, NULL);
     sigaction(SIGTERM, &sig_int_handler, NULL);
+    sigaction(SIGPIPE, &sig_int_handler, NULL);
 
     std::string source = "default";
     // init librespeaker
@@ -148,10 +156,25 @@ int main(int argc, char *argv[])
     int sock, client_sock, rval, un_size ;
     struct sockaddr_un server, new_addr;
     char buf[1024];
+    bool socket_error, detected;
+    int dir;
+    std::string one_block, one_line;
+    std::string event_pkt_str, audio_pkt_str;
+    int frames;
+    size_t base64_len;
+    int nfds;
+    fd_set  testfds;
+    struct  timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 1000;
+    int counter;
+
+    TimePoint on_detected;
+
     // init the socket
     sock = socket(AF_UNIX, SOCK_STREAM, 0);
     if (sock < 0) {
-        std::cerr << "opening stream socket" << std::endl;
+        std::cerr << "error when opening stream socket" << std::endl;
         exit(1);
     }
     // init bind
@@ -160,7 +183,7 @@ int main(int argc, char *argv[])
     strcpy(server.sun_path, SOCKET_FILE);
     unlink(SOCKET_FILE);
     if ((bind(sock, (struct sockaddr *) &server, sizeof(struct sockaddr_un))) < 0){
-        std::cerr << "binding stream socket" << std::endl;
+        std::cerr << "error when binding stream socket" << std::endl;
         close(sock);
         exit(1);
     }
@@ -178,53 +201,90 @@ int main(int argc, char *argv[])
             std::cerr << "socket accept error" << std::endl;
             continue;
         }else{
+            std::cout << "accepted socket client " << client_sock << std::endl;
+
             if (!respeaker->Start(&stop)) {
                 std::cerr << "Can not start the respeaker node chain." << std::endl;
                 return -1;
             }
 
-            bool socket_error, detected;
-            int dir;
-            std::string data, client_data;
-            int frames;
-            size_t base64_len;
             size_t num_channels = respeaker->GetNumOutputChannels();
             int rate = respeaker->GetNumOutputRate();
-            std::cout << "num channels: " << num_channels << ", rate: " << rate << std::endl;
+            std::cout << "respeakerd output: num channels: " << num_channels << ", rate: " << rate << std::endl;
 
             socket_error = false;
-            while (!stop && !socket_error) {
+            counter = 0;
+            while (!stop && !socket_error)
+            {
+                // check if the client socket is still alive
+                FD_ZERO(&testfds);                      
+                FD_SET(client_sock, &testfds);                       
+                nfds = select(client_sock + 1, &testfds, NULL, NULL, &tv);
+                //std::cout << "-" << std::endl;
+                //std::cout << nfds << std::endl;
+                if (nfds > 0)
+                {
+                    if (recv(client_sock, recv_buffer, RECV_BUFF_LEN, 0) <= 0) {
+                        if (errno != EINTR) {
+                            std::cerr << "client socket is closed, drop it" << std::endl;
+                            socket_error = true;
+                            break;
+                        }
+                    }
+                }
+
+                // if (counter++ > 100) {
+                //     counter = 0;
+                //     if (!blocking_send(client_sock, "\r\n")) {
+                //         break;
+                //     }
+                // }
+
                 //if have a client connected,this respeaker always detect hotword,if there are hotword,send event and audio.
                 detected = respeaker->DetectHotword(); 
+
+                //std::cout << "+" << std::endl;
 
                 if (detected) {
                     dir = respeaker->GetDirection();  
 
+                    on_detected = SteadyClock::now();
+
                     // send the event to client right now
                     json event = {{"type", "event"}, {"data", "hotword"}, {"direction", dir}};
-                    std::string event_str = event.dump();
-                    event_str += "\r\n";
+                    event_pkt_str = event.dump();
+                    event_pkt_str += "\r\n";
 
-                    if(!blocking_send(client_sock, event_str))
+                    if(!blocking_send(client_sock, event_pkt_str))
                         socket_error = true;
 
                     // now listen the data
                     while (!stop && !socket_error) {
                         // 1st, check stop_capture command
-                        client_data = cut_line(client_sock);
-                        if(client_data != ""){
-                            if(client_data.find("stop_capture") != std::string::npos)
+                        one_line = cut_line(client_sock);
+                        if(one_line != ""){
+                            if(one_line.find("stop_capture") != std::string::npos) {
+                                std::cout << "stop_capture" << std::endl;
                                 break;
+                            }
+                                
+                        }
+                        if (SteadyClock::now() - on_detected > std::chrono::milliseconds(STOP_CAPTURE_TIMEOUT)) {
+                            std::cout << "stop_capture by timeout" << std::endl;
+                            break;
                         }
 
-                        data = respeaker->Listen(BLOCK_SIZE_MS);
-                        // send the data to client
-                        //base64_len = strlen(data.c_str());
-                        json event = {{"type", "event"}, {"data", base64::encode(data)}, {"direction", dir}};
-                        std::string event_str = event.dump();
-                        event_str += "\r\n";
+                        one_block = respeaker->Listen(BLOCK_SIZE_MS);
+                        // std::cout << "*" << std::endl;
 
-                        if(!blocking_send(client_sock, event_str))
+                        // send the data to client
+                        // base64_len = one_block.length();
+                        // std::cout << base64_len << std::endl;
+                        json audio = {{"type", "audio"}, {"data", base64::encode(one_block)}, {"direction", dir}};
+                        audio_pkt_str = audio.dump();
+                        audio_pkt_str += "\r\n";
+
+                        if(!blocking_send(client_sock, audio_pkt_str))
                             socket_error = true;
                     }
                     respeaker->SetChainState(WAIT_TRIGGER_WITH_BGM);
@@ -235,6 +295,8 @@ int main(int argc, char *argv[])
         }
         close(client_sock);
     }
+    close(sock);
+    unlink(SOCKET_FILE);
 
+    return 0;
 }
-
