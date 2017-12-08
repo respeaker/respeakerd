@@ -42,8 +42,9 @@ https://github.com/respeaker/get_started_with_respeaker/blob/master/docs/ReSpeak
 ```
 
 ## Run
-run the script with sudo (to drive the pixel_ring)
-`sudo python demo_respeaker_v2_vep_alexa_with_light.py`
+#run the script with sudo (to drive the pixel_ring)
+sudo mraa-gpio set 12 0
+python demo_respeaker_v2_vep_alexa_with_light.py
 
 """
 
@@ -58,7 +59,11 @@ import mraa
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
-    logging.getLogger('alexa').setLevel(logging.INFO)
+    #logging.getLogger('avs.alexa').setLevel(logging.INFO)
+    logging.getLogger('hpack.hpack').setLevel(logging.INFO)
+    # logging.getLogger('avs.alexa').setLevel(logging.INFO)
+    # logging.getLogger('avs.alexa').setLevel(logging.INFO)
+    # logging.getLogger('avs.alexa').setLevel(logging.INFO)
 
     en = mraa.Gpio(12)
     en.dir(mraa.DIR_OUT)
@@ -71,11 +76,11 @@ def main():
 
     def on_thinking():
         src.stop_capture()
-        pixels.think()
+        pixel_ring.think()
 
     def on_detected(dir):
         logging.info('detected at {}`'.format(dir))
-        pixel_ring.wakeup(dir)
+        pixel_ring.wakeup((dir + 30)%360)
         alexa.listen()
 
     alexa.state_listener.on_listening = pixel_ring.listen

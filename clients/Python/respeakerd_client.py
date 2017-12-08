@@ -42,12 +42,13 @@ class RespeakerdClient(object):
     def close(self):
         self.stop = True
         with self.lock:
+            logger.info("going to close the socket...")
             self.sock.close()
     
     def blocking_send(self, json_obj):
         try:
             with self.lock:
-                self.sock.sendall(json.dump(json_obj))
+                self.sock.sendall(json.dumps(json_obj) + "\r\n")
         except Exception, e:
             logger.error('Error when sendall: {}'.format(str(e)))
             return False
