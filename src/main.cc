@@ -151,8 +151,9 @@ int main(int argc, char *argv[])
     // TODO: user gflags to pass in the resource path on command line
     // "./resources/snowboy.umdl"
     vep_kws.reset(VepDoaKwsNode::Create("./resources/common.res",
-                                        "./resources/alexa/alexa_02092017.umdl",
-                                        "0.2"));
+                                        "./resources/alexa.umdl",
+                                        "0.5",
+                                        10));
     //vep_kws->DisableAutoStateTransfer();
     //collector->BindToCore(0);
     //vep_bf->BindToCore(1);
@@ -274,7 +275,7 @@ int main(int argc, char *argv[])
                 //     }
                 // }
 
-                if (tick++ % 100 == 0) {
+                if (tick++ % 12 == 0) {
                     std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
                     vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
                 }
@@ -316,12 +317,12 @@ int main(int argc, char *argv[])
                             break;
                         }
 
-                        if (tick++ % 100 == 0) {
+                        if (tick++ % 12 == 0) {
                             std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
                             vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
                         }
 
-                        one_block = respeaker->Listen(BLOCK_SIZE_MS);
+                        one_block = respeaker->Listen();
                         //std::cout << "*" << std::flush;
                         frames = one_block.length() / (sizeof(int16_t) * num_channels);
                         sf_writef_short(file, (const int16_t *)(one_block.data()), frames);
