@@ -8,10 +8,16 @@
 #include <cstring>
 #include <memory>
 #include <iostream>
+#include <sstream>
 #include <csignal>
 #include <cstdlib>
 #include <cstdio>
 #include <chrono>
+
+extern "C"
+{
+#include <sndfile.h>
+}
 
 #include <respeaker.h>
 #include <chain_nodes/pulse_collector_node.h>
@@ -121,6 +127,7 @@ std::string cut_line(int client)
 
 int main(int argc, char *argv[]) 
 {
+    // signal process
     struct sigaction sig_int_handler;
     sig_int_handler.sa_handler = SignalHandler;
     sigemptyset(&sig_int_handler.sa_mask);
@@ -129,7 +136,10 @@ int main(int argc, char *argv[])
     sigaction(SIGTERM, &sig_int_handler, NULL);
     sigaction(SIGPIPE, &sig_int_handler, NULL);
 
+    ////
     std::string source = "default";
+    bool enable_wav_log = true;
+
     // init librespeaker
     std::unique_ptr<PulseCollectorNode> collector;
     std::unique_ptr<VepAecBeamformingNode> vep_bf;
@@ -137,12 +147,17 @@ int main(int argc, char *argv[])
     std::unique_ptr<ReSpeaker> respeaker;
 
     collector.reset(PulseCollectorNode::Create(source, 16000, BLOCK_SIZE_MS));
-    vep_bf.reset(VepAecBeamformingNode::Create(6));
+    vep_bf.reset(VepAecBeamformingNode::Create(6, enable_wav_log));
     // TODO: user gflags to pass in the resource path on command line
+    // "./resources/snowboy.umdl"
     vep_kws.reset(VepDoaKwsNode::Create("./resources/common.res",
                                         "./resources/alexa/alexa_02092017.umdl",
-                                        "0.5"));
+                                        "0.2"));
     //vep_kws->DisableAutoStateTransfer();
+    //collector->BindToCore(0);
+    //vep_bf->BindToCore(1);
+    vep_kws->BindToCore(2);
+
     vep_bf->Uplink(collector.get());
     vep_kws->Uplink(vep_bf.get());
 
@@ -168,8 +183,12 @@ int main(int argc, char *argv[])
     tv.tv_sec = 0;
     tv.tv_usec = 1000;
     int counter;
+    uint16_t tick;
 
     TimePoint on_detected;
+
+    SNDFILE	*file ;
+    SF_INFO	sfinfo ;
 
     // init the socket
     sock = socket(AF_UNIX, SOCK_STREAM, 0);
@@ -194,6 +213,7 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
+
     while(!stop){
         un_size = sizeof(struct sockaddr_un);
         client_sock = accept(sock, (struct sockaddr *)&new_addr, &un_size);
@@ -212,15 +232,29 @@ int main(int argc, char *argv[])
             int rate = respeaker->GetNumOutputRate();
             std::cout << "respeakerd output: num channels: " << num_channels << ", rate: " << rate << std::endl;
 
+            // init libsndfile
+            memset (&sfinfo, 0, sizeof (sfinfo));
+            sfinfo.samplerate	= rate ;
+            sfinfo.channels		= num_channels ;
+            sfinfo.format		= (SF_FORMAT_WAV | SF_FORMAT_PCM_24) ;
+            std::ostringstream   file_name;
+            file_name << "record_respeakerd_" << client_sock << ".wav";
+            if (! (file = sf_open (file_name.str().c_str(), SFM_WRITE, &sfinfo)))
+            {
+                std::cerr << "Error : Not able to open output file." << std::endl;
+                return -1 ;
+            }
+
             socket_error = false;
             counter = 0;
+            tick = 0;
             while (!stop && !socket_error)
             {
                 // check if the client socket is still alive
                 FD_ZERO(&testfds);                      
                 FD_SET(client_sock, &testfds);                       
                 nfds = select(client_sock + 1, &testfds, NULL, NULL, &tv);
-                //std::cout << "-" << std::endl;
+                //std::cout << "-" << std::flush;
                 //std::cout << nfds << std::endl;
                 if (nfds > 0)
                 {
@@ -240,8 +274,16 @@ int main(int argc, char *argv[])
                 //     }
                 // }
 
+                if (tick++ % 100 == 0) {
+                    std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
+                    vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
+                }
+
                 //if have a client connected,this respeaker always detect hotword,if there are hotword,send event and audio.
-                detected = respeaker->DetectHotword(); 
+                one_block = respeaker->DetectHotword(detected);
+
+                frames = one_block.length() / (sizeof(int16_t) * num_channels);
+                sf_writef_short(file, (const int16_t *)(one_block.data()), frames);
 
                 //std::cout << "+" << std::endl;
 
@@ -274,8 +316,15 @@ int main(int argc, char *argv[])
                             break;
                         }
 
+                        if (tick++ % 100 == 0) {
+                            std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
+                            vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
+                        }
+
                         one_block = respeaker->Listen(BLOCK_SIZE_MS);
-                        // std::cout << "*" << std::endl;
+                        //std::cout << "*" << std::flush;
+                        frames = one_block.length() / (sizeof(int16_t) * num_channels);
+                        sf_writef_short(file, (const int16_t *)(one_block.data()), frames);
 
                         // send the data to client
                         // base64_len = one_block.length();
@@ -287,11 +336,13 @@ int main(int argc, char *argv[])
                         if(!blocking_send(client_sock, audio_pkt_str))
                             socket_error = true;
                     }
+                    //std::this_thread::sleep_for(std::chrono::seconds(2));
                     respeaker->SetChainState(WAIT_TRIGGER_WITH_BGM);
                 }
             } // while
             respeaker->Stop();
             std::cout << "librespeaker cleanup done." << std::endl;
+            sf_close (file);
         }
         close(client_sock);
     }

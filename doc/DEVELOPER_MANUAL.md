@@ -10,6 +10,7 @@
 - base64: https://github.com/tplgy/cppcodec, 仅一个头文件
 - gflags: https://gflags.github.io/gflags/, 命令行参数库, 已经编译成静态库
 - log4cplus: 日志库, 已经编译成静态库
+- libsndfile1-dev libasound2-dev: 调试功能, 将录音存到文件
 - asio: 待删除???
 
 ## 3. 运行参数

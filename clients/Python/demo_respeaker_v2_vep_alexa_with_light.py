@@ -74,19 +74,32 @@ def main():
 
     src.link(alexa)
 
+    def on_listening():
+        print("===== on_listening =====\r\n")
+        pixel_ring.listen()
+
+    def on_speaking():
+        print("===== on_speaking =====\r\n")
+        pixel_ring.speak()
+
     def on_thinking():
+        print("===== on_thinking =====\r\n")
         src.stop_capture()
         pixel_ring.think()
+
+    def on_off():
+        print("===== on_off =====\r\n")
+        pixel_ring.off()
 
     def on_detected(dir):
         logging.info('detected at {}`'.format(dir))
         pixel_ring.wakeup((dir + 30)%360)
         alexa.listen()
 
-    alexa.state_listener.on_listening = pixel_ring.listen
+    alexa.state_listener.on_listening = on_listening
     alexa.state_listener.on_thinking = on_thinking
-    alexa.state_listener.on_speaking = pixel_ring.speak
-    alexa.state_listener.on_finished = pixel_ring.off
+    alexa.state_listener.on_speaking = on_speaking
+    alexa.state_listener.on_finished = on_off
 
     src.set_callback(on_detected)
 

@@ -25,6 +25,8 @@ message(FATAL_ERROR "liblog4cplus.a not found")
 endif(NOT LIBLOG4CPLUS_PATH)
 message(STATUS "liblog4cplus is found at " ${LIBLOG4CPLUS_PATH})
 
+pkg_check_modules(SNDFILE  REQUIRED  sndfile)
+
 pkg_check_modules(LIBRESPEAKER  REQUIRED  respeaker)
 
 include_directories(
@@ -35,10 +37,12 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/libs/log4cplus/include
     ${PROJECT_SOURCE_DIR}/libs/gflags/include
     ${LIBRESPEAKER_INCLUDE_DIRS}
+    ${SNDFILE_INCLUDE_DIRS}
 )
 
 link_directories(
     ${LIBRESPEAKER_LIBRARY_DIRS}
+    ${SNDFILE_LIBRARY_DIRS}
 )
 
 add_definitions(-DASIO_STANDALONE)
@@ -55,6 +59,7 @@ target_link_libraries(respeakerd
     ${LIBGFLAGS_PATH}
     ${LIBLOG4CPLUS_PATH}
     ${LIBRESPEAKER_LIBRARIES}
+    ${SNDFILE_LIBRARIES}
 )
 
 install(PROGRAMS respeakerd DESTINATION bin)
