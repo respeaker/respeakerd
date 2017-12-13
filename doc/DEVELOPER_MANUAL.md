@@ -43,8 +43,10 @@ respeakerd 暴露 unix domain socket 于/tmp/respeakerd.sock 文件. 此 socket 
 
 ### A.2 输入通道 json 格式
 
-目前仅支持一个指令 stop_capture.
+目前支持2个指令:
 
-{"cmd": "stop_capture", "cmd_data": ""}
+{"cmd": "ready", "cmd_data": ""}    # alexa 连接上云, 可以开始接受指令
+
+{"cmd": "stop_capture", "cmd_data": ""}    # alexa 检测到语音指令结束, 需要底层停止录音
 
 

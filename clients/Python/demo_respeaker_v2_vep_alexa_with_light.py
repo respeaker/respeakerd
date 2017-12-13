@@ -74,6 +74,13 @@ def main():
 
     src.link(alexa)
 
+    pixel_ring.think()
+
+    def on_ready():
+        print("===== on_ready =====\r\n")
+        pixel_ring.off()
+        src.on_ready()
+
     def on_listening():
         print("===== on_listening =====\r\n")
         pixel_ring.listen()
@@ -100,6 +107,7 @@ def main():
     alexa.state_listener.on_thinking = on_thinking
     alexa.state_listener.on_speaking = on_speaking
     alexa.state_listener.on_finished = on_off
+    alexa.state_listener.on_ready = on_ready
 
     src.set_callback(on_detected)
 

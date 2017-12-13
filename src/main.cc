@@ -42,6 +42,7 @@ using TimePoint = std::chrono::time_point<SteadyClock>;
 #define BLOCK_SIZE_MS    8
 #define RECV_BUFF_LEN    1024
 #define STOP_CAPTURE_TIMEOUT    30000    //millisecond
+#define WAIT_READY_TIMEOUT      30000    //millisecond
 
 static bool stop = false;
 static char recv_buffer[RECV_BUFF_LEN];
@@ -125,6 +126,28 @@ std::string cut_line(int client)
     return request;
 }
 
+bool is_client_alive(int client_sock)
+{
+    int nfds;
+    fd_set  testfds;
+    struct  timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 1000;
+
+    FD_ZERO(&testfds);                      
+    FD_SET(client_sock, &testfds);                       
+    nfds = select(client_sock + 1, &testfds, NULL, NULL, &tv);
+    if (nfds > 0)
+    {
+        if (recv(client_sock, recv_buffer, RECV_BUFF_LEN, 0) <= 0) {
+            if (errno != EINTR) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
 int main(int argc, char *argv[]) 
 {
     // signal process
@@ -155,6 +178,7 @@ int main(int argc, char *argv[])
                                         "0.5",
                                         10));
     //vep_kws->DisableAutoStateTransfer();
+    vep_kws->SetTriggerPostConfirmThresholdTime(160);
     //collector->BindToCore(0);
     //vep_bf->BindToCore(1);
     vep_kws->BindToCore(2);
@@ -178,15 +202,11 @@ int main(int argc, char *argv[])
     std::string event_pkt_str, audio_pkt_str;
     int frames;
     size_t base64_len;
-    int nfds;
-    fd_set  testfds;
-    struct  timeval tv;
-    tv.tv_sec = 0;
-    tv.tv_usec = 1000;
+    
     int counter;
     uint16_t tick;
 
-    TimePoint on_detected;
+    TimePoint on_detected, cur_time;
 
     SNDFILE	*file ;
     SF_INFO	sfinfo ;
@@ -233,6 +253,37 @@ int main(int argc, char *argv[])
             int rate = respeaker->GetNumOutputRate();
             std::cout << "respeakerd output: num channels: " << num_channels << ", rate: " << rate << std::endl;
 
+            respeaker->Pause();
+            std::cout << "waiting for ready signal..." << std::endl;
+
+            cur_time = SteadyClock::now();
+            socket_error = false;
+            while (!stop && !socket_error)
+            {
+                // check if the client socket is still alive
+                if (!is_client_alive(client_sock)) {
+                    std::cerr << "client socket is closed, drop it" << std::endl;
+                    socket_error = true;
+                    break;
+                }
+
+                // wait for the ready signal
+                one_line = cut_line(client_sock);
+                if(one_line != ""){
+                    if(one_line.find("ready") != std::string::npos) {
+                        std::cout << "client ready" << std::endl;
+                        break;
+                    }
+                }
+                if (SteadyClock::now() - cur_time > std::chrono::milliseconds(WAIT_READY_TIMEOUT)) {
+                    std::cout << "wait ready timeout" << std::endl;
+                    socket_error = true;
+                    break;
+                }
+            }
+
+            if (!socket_error) respeaker->Resume();
+
             // init libsndfile
             memset (&sfinfo, 0, sizeof (sfinfo));
             sfinfo.samplerate	= rate ;
@@ -246,34 +297,16 @@ int main(int argc, char *argv[])
                 return -1 ;
             }
 
-            socket_error = false;
             counter = 0;
             tick = 0;
             while (!stop && !socket_error)
             {
                 // check if the client socket is still alive
-                FD_ZERO(&testfds);                      
-                FD_SET(client_sock, &testfds);                       
-                nfds = select(client_sock + 1, &testfds, NULL, NULL, &tv);
-                //std::cout << "-" << std::flush;
-                //std::cout << nfds << std::endl;
-                if (nfds > 0)
-                {
-                    if (recv(client_sock, recv_buffer, RECV_BUFF_LEN, 0) <= 0) {
-                        if (errno != EINTR) {
-                            std::cerr << "client socket is closed, drop it" << std::endl;
-                            socket_error = true;
-                            break;
-                        }
-                    }
+                if (!is_client_alive(client_sock)) {
+                    std::cerr << "client socket is closed, drop it" << std::endl;
+                    socket_error = true;
+                    break;
                 }
-
-                // if (counter++ > 100) {
-                //     counter = 0;
-                //     if (!blocking_send(client_sock, "\r\n")) {
-                //         break;
-                //     }
-                // }
 
                 if (tick++ % 12 == 0) {
                     std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
@@ -348,7 +381,6 @@ int main(int argc, char *argv[])
         close(client_sock);
     }
     close(sock);
-    unlink(SOCKET_FILE);
 
     return 0;
 }
