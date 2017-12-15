@@ -86,21 +86,21 @@ bool blocking_send(int client, std::string data)
 
 std::string cut_line(int client)
 {
-    int     nfds;                      
-    fd_set  readfds;                       
-    struct  timeval tv;                      
-    tv.tv_sec = 0;                      
+    int     nfds;
+    fd_set  readfds;
+    struct  timeval tv;
+    tv.tv_sec = 0;
     tv.tv_usec = 1000;
     std::string request = "";
 
     // read until we get a newline
     while (request.find("\r\n") == std::string::npos) {
-        FD_ZERO(&readfds);                      
-        FD_SET(client, &readfds);                       
+        FD_ZERO(&readfds);
+        FD_SET(client, &readfds);
         nfds = select(client+1, &readfds, NULL, NULL, &tv);
         if(nfds < 0){
             std::cerr << "select  error" << std::endl;
-            return "";               
+            return "";
         }else if(nfds == 0){
             //std::cout << "timeout  error" << std::endl;
             return "";
@@ -119,7 +119,7 @@ std::string cut_line(int client)
             }
             // be sure to use append in case we have binary data
             request.append(recv_buffer, nread);
-        }  
+        }
     }
     // a better server would cut off anything after the newline and
     // save it in a cache
@@ -134,8 +134,8 @@ bool is_client_alive(int client_sock)
     tv.tv_sec = 0;
     tv.tv_usec = 1000;
 
-    FD_ZERO(&testfds);                      
-    FD_SET(client_sock, &testfds);                       
+    FD_ZERO(&testfds);
+    FD_SET(client_sock, &testfds);
     nfds = select(client_sock + 1, &testfds, NULL, NULL, &tv);
     if (nfds > 0)
     {
@@ -148,7 +148,7 @@ bool is_client_alive(int client_sock)
     return true;
 }
 
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     // signal process
     struct sigaction sig_int_handler;
@@ -176,9 +176,11 @@ int main(int argc, char *argv[])
     vep_kws.reset(VepDoaKwsNode::Create("./resources/common.res",
                                         "./resources/alexa.umdl",
                                         "0.5",
-                                        10));
+                                        10,
+                                        true));
     //vep_kws->DisableAutoStateTransfer();
     vep_kws->SetTriggerPostConfirmThresholdTime(160);
+    vep_kws->SetAgcTargetLevelDbfs(10);
     //collector->BindToCore(0);
     //vep_bf->BindToCore(1);
     vep_kws->BindToCore(2);
@@ -192,7 +194,7 @@ int main(int argc, char *argv[])
     respeaker->RegisterHotwordDetectionNode(vep_kws.get());
     respeaker->RegisterOutputNode(vep_kws.get());
 
-    
+
     int sock, client_sock, rval, un_size ;
     struct sockaddr_un server, new_addr;
     char buf[1024];
@@ -202,7 +204,7 @@ int main(int argc, char *argv[])
     std::string event_pkt_str, audio_pkt_str;
     int frames;
     size_t base64_len;
-    
+
     int counter;
     uint16_t tick;
 
@@ -322,7 +324,7 @@ int main(int argc, char *argv[])
                 //std::cout << "+" << std::endl;
 
                 if (detected) {
-                    dir = respeaker->GetDirection();  
+                    dir = respeaker->GetDirection();
 
                     on_detected = SteadyClock::now();
 
@@ -343,7 +345,7 @@ int main(int argc, char *argv[])
                                 std::cout << "stop_capture" << std::endl;
                                 break;
                             }
-                                
+
                         }
                         if (SteadyClock::now() - on_detected > std::chrono::milliseconds(STOP_CAPTURE_TIMEOUT)) {
                             std::cout << "stop_capture by timeout" << std::endl;
