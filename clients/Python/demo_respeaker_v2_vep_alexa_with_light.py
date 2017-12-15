@@ -79,7 +79,7 @@ def main():
     def on_ready():
         print("===== on_ready =====\r\n")
         pixel_ring.off()
-        src.on_ready()
+        src.on_cloud_ready()
 
     def on_listening():
         print("===== on_listening =====\r\n")

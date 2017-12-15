@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
     int sock, client_sock, rval, un_size ;
     struct sockaddr_un server, new_addr;
     char buf[1024];
-    bool socket_error, detected;
+    bool socket_error, detected, cloud_ready;
     int dir;
     std::string one_block, one_line;
     std::string event_pkt_str, audio_pkt_str;
@@ -260,6 +260,9 @@ int main(int argc, char *argv[])
 
             cur_time = SteadyClock::now();
             socket_error = false;
+            cloud_ready = false;
+
+            // wait the cloud to be ready
             while (!stop && !socket_error)
             {
                 // check if the client socket is still alive
@@ -273,7 +276,8 @@ int main(int argc, char *argv[])
                 one_line = cut_line(client_sock);
                 if(one_line != ""){
                     if(one_line.find("ready") != std::string::npos) {
-                        std::cout << "client ready" << std::endl;
+                        cloud_ready = true;
+                        std::cout << "cloud ready" << std::endl;
                         break;
                     }
                 }
@@ -310,6 +314,18 @@ int main(int argc, char *argv[])
                     break;
                 }
 
+                // check cloud ready status
+                one_line = cut_line(client_sock);
+                if(one_line != ""){
+                    if(one_line.find("ready") != std::string::npos) {
+                        cloud_ready = true;
+                        std::cout << "cloud ready" << std::endl;
+                    } else if (one_line.find("connecting") != std::string::npos) {
+                        cloud_ready = false;
+                        std::cout << "cloud is reconnecting..." << std::endl;
+                    }
+                }
+
                 if (tick++ % 12 == 0) {
                     std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
                     vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
@@ -323,7 +339,7 @@ int main(int argc, char *argv[])
 
                 //std::cout << "+" << std::endl;
 
-                if (detected) {
+                if (detected && cloud_ready) {
                     dir = respeaker->GetDirection();
 
                     on_detected = SteadyClock::now();
@@ -343,6 +359,10 @@ int main(int argc, char *argv[])
                         if(one_line != ""){
                             if(one_line.find("stop_capture") != std::string::npos) {
                                 std::cout << "stop_capture" << std::endl;
+                                break;
+                            } else if (one_line.find("connecting") != std::string::npos) {
+                                cloud_ready = false;
+                                std::cout << "cloud is reconnecting..." << std::endl;
                                 break;
                             }
 

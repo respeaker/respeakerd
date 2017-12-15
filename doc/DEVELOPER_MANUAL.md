@@ -19,7 +19,7 @@
 
 ### 4.1 git flow 约定
 
-采用经典 git-flow 工作流, 即 dev 为开发分支, master 为生产分支, 每个开发者必须基于 dev 分支新建 feature 分支进行新功能开发. 达到 milestone 后由管理员进行 release 流程 - 建立 release 分支, 并发布测试, 测试无问题后由管理员将  release 分支合并进 master 分支, 并打版本标签.
+采用经典 git-flow 工作流, 即 dev 为开发分支, master 为生产分支, 每个开发者必须基于 dev 分支新建 feature 分支进行新功能开发. 达到 milestone 后由管理员进行 release 流程 - 建立 release 分支, 并发布测试, 测试无问题后由管理员将  release 分支合并进 master 分支, 并打版本标签.
 
 参考: https://danielkummer.github.io/git-flow-cheatsheet/index.zh_CN.html
 
@@ -37,16 +37,18 @@ respeakerd 暴露 unix domain socket 于/tmp/respeakerd.sock 文件. 此 socket 
 
 ### A.1 输出通道 json 格式
 
-{"type": "audio", "data": "base64编码的x毫秒音频数据", "direction": 浮点数表示的方向角度}
+{"type": "audio", "data": "base64编码的x毫秒音频数据", "direction": 浮点数表示的方向角度}
 
-{"type": "event", "data": "hotword", "direction": 浮点数表示的方向角度}
+{"type": "event", "data": "hotword", "direction": 浮点数表示的方向角度}
 
 ### A.2 输入通道 json 格式
 
 目前支持2个指令:
 
-{"cmd": "ready", "cmd_data": ""}    # alexa 连接上云, 可以开始接受指令
+{"type": "status", "data": "ready"}    # alexa 连接上云, 可以开始接受指令
 
-{"cmd": "stop_capture", "cmd_data": ""}    # alexa 检测到语音指令结束, 需要底层停止录音
+{"type": "status", "data": "connecting"}    # alexa 与云失去连接, 此时不接受指令, client 端应该负责用ui 提供用户此状态.
+
+{"type": "cmd", "data": "stop_capture"}    # alexa 检测到语音指令结束, 需要底层停止录音
 
 

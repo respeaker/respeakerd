@@ -19,27 +19,41 @@ logger = logging.getLogger(__name__)
 ST_IDLE = 1
 ST_CONN = 2
 
+MESSAGES = {
+    "ready": {"type": "status", "data": "ready"},
+    "connecting": {"type": "status", "data": "connecting"},
+    "stop_capture": {"type": "cmd", "data": "stop_capture"}
+}
+
 class RespeakerdSource(Element):
     def __init__(self):
         super(RespeakerdSource, self).__init__()
 
         self.client = respeakerd_client.RespeakerdClient()
-        self.state = ST_IDLE
+        self.client_state = ST_IDLE
         self.done = False
         self.on_detected = None
         self.dir = 0
         self.event_queue = queue.Queue(maxsize=1000)
-        self.ready_state = False
+        self.cloud_state = MESSAGES['connecting']
+        self.timer = threading.Timer(1, self.timer_proc)
+        self.timer.start()
+
+    def timer_proc(self):
+        if self.client_state != ST_IDLE:
+            self.event_queue.put(self.cloud_state)
+        self.timer = threading.Timer(1, self.timer_proc)
+        self.timer.start()
 
 
     def run(self):
         while not self.done:
-            if self.state == ST_IDLE:
+            if self.client_state == ST_IDLE:
                 if self.client.connect():
-                    self.state = ST_CONN
-                    if self.ready_state:
-                        time.sleep(1)
-                        self.event_queue.put({"cmd": "ready", "cmd_data": ""})
+                    self.client_state = ST_CONN
+                    while not self.event_queue.empty():
+                        self.event_queue.get_nowait()
+                    self.event_queue.put(MESSAGES['ready'])
                 else:
                     time.sleep(1)
             else:
@@ -56,7 +70,7 @@ class RespeakerdSource(Element):
                             self.client.send(cmd)
                         except respeakerd_client.DisconnectException:
                             self.client.close()
-                            self.state = ST_IDLE
+                            self.client_state = ST_IDLE
                             need_reconn = True
                             break
                 if need_reconn:
@@ -70,7 +84,7 @@ class RespeakerdSource(Element):
                     self.client.send([0])
                 except respeakerd_client.DisconnectException:
                     self.client.close()
-                    self.state = ST_IDLE
+                    self.client_state = ST_IDLE
                     continue
 
                 if not msg:
@@ -98,7 +112,7 @@ class RespeakerdSource(Element):
 
     def start(self):
         self.done = False
-        self.state = ST_IDLE
+        self.client_state = ST_IDLE
         self.ready_state = False
         thread = threading.Thread(target=self.run)
         thread.daemon = True
@@ -108,19 +122,20 @@ class RespeakerdSource(Element):
     def stop(self):
         self.done = True
         self.client.close()
+        self.timer.cancel()
 
     def is_active(self):
         return not self.done
 
 
     def stop_capture(self):
-        command = {"cmd": "stop_capture", "cmd_data": ""}
-        self.event_queue.put(command)
+        self.event_queue.put(MESSAGES['stop_capture'])
 
-    def on_ready(self):
-        command = {"cmd": "ready", "cmd_data": ""}
-        self.event_queue.put(command)
-        self.ready_state = True
+    def on_cloud_ready(self):
+        self.cloud_state = MESSAGES['ready']
+
+    def on_disconnected(self):
+        self.cloud_state = MESSAGES['connecting']
 
     def set_callback(self, callback):
         self.on_detected = callback
