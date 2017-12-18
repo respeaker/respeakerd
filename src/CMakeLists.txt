@@ -12,7 +12,7 @@ if(${is_arm} GREATER -1)
 endif(${is_arm} GREATER -1)
 
 # gflags
-find_library(LIBGFLAGS_PATH libgflags.a ${GFLAGS_PATH} NO_DEFAULT_PATH)
+find_library(LIBGFLAGS_PATH libgflags_nothreads.a ${GFLAGS_PATH} NO_DEFAULT_PATH)
 if(NOT LIBGFLAGS_PATH)
 message(FATAL_ERROR "libgflags.a not found")
 endif(NOT LIBGFLAGS_PATH)
@@ -56,11 +56,15 @@ SET(SRC
 add_executable(respeakerd ${SRC})
 
 target_link_libraries(respeakerd
-    ${LIBGFLAGS_PATH}
+    ${LIBGFLAGS_PATH} -lpthread -lm
     ${LIBLOG4CPLUS_PATH}
     ${LIBRESPEAKER_LIBRARIES}
     ${SNDFILE_LIBRARIES}
 )
 
-install(PROGRAMS respeakerd DESTINATION bin)
+install(PROGRAMS ${PROJECT_BINARY_DIR}/src/respeakerd DESTINATION bin)
+install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/respeaker_python_client DESTINATION bin)
+install(FILES ${PROJECT_SOURCE_DIR}/scripts/respeakerd.service
+              ${PROJECT_SOURCE_DIR}/scripts/respeaker_python_client.service
+        DESTINATION /etc/systemd/system/)
 

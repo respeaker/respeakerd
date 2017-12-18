@@ -4,6 +4,7 @@
 #include <sys/un.h>
 #include <sys/select.h>
 #include <sys/time.h>
+#include <sys/stat.h>
 #include <errno.h>
 #include <cstring>
 #include <memory>
@@ -26,6 +27,7 @@ extern "C"
 
 #include "json.hpp"
 #include "cppcodec/base64_default_rfc4648.hpp"
+#include "gflags/gflags.h"
 
 // enable asio debugging
 // #ifndef NDEBUG
@@ -41,11 +43,20 @@ using TimePoint = std::chrono::time_point<SteadyClock>;
 #define SOCKET_FILE    "/tmp/respeakerd.sock"
 #define BLOCK_SIZE_MS    8
 #define RECV_BUFF_LEN    1024
-#define STOP_CAPTURE_TIMEOUT    30000    //millisecond
+#define STOP_CAPTURE_TIMEOUT    15000    //millisecond
 #define WAIT_READY_TIMEOUT      30000    //millisecond
+
+DEFINE_string(snowboy_res_path, "./resources/common.res", "the path to snowboay's resource file");
+DEFINE_string(snowboy_model_path, "./resources/alexa.umdl", "the path to snowboay's model file");
+DEFINE_string(snowboy_sensitivity, "0.5", "the sensitivity of snowboay");
+DEFINE_string(source, "default", "the source of pulseaudio");
+DEFINE_int32(agc_level, -10, "dBFS for AGC, the range is [-31, 0]");
+DEFINE_bool(debug, false, "print more message");
+DEFINE_bool(enable_wav_log, false, "enable VEP to log its input and output into wav files");
 
 static bool stop = false;
 static char recv_buffer[RECV_BUFF_LEN];
+std::string recv_string;
 
 void SignalHandler(int signal){
     if (signal == SIGPIPE){
@@ -84,46 +95,57 @@ bool blocking_send(int client, std::string data)
     return true;
 }
 
-std::string cut_line(int client)
+std::string cut_line(int client, bool &alive)
 {
     int     nfds;
     fd_set  readfds;
     struct  timeval tv;
     tv.tv_sec = 0;
     tv.tv_usec = 1000;
-    std::string request = "";
 
-    // read until we get a newline
-    while (request.find("\r\n") == std::string::npos) {
-        FD_ZERO(&readfds);
-        FD_SET(client, &readfds);
-        nfds = select(client+1, &readfds, NULL, NULL, &tv);
-        if(nfds < 0){
-            std::cerr << "select  error" << std::endl;
-            return "";
-        }else if(nfds == 0){
-            //std::cout << "timeout  error" << std::endl;
-            return "";
-        }else{
-            int nread = recv(client, recv_buffer, RECV_BUFF_LEN, 0);
-            if (nread < 0) {
-                if (errno == EINTR)
-                    // the socket call was interrupted -- try again
-                    continue;
-                else
-                    // an error occurred, so break out
-                    return "";
-            } else if (nread == 0) {
-                // the socket is closed
+    size_t idx;
+    std::string line;
+
+    while (true) {
+        // read until we get a newline
+        while ((idx = recv_string.find("\r\n")) == std::string::npos) {
+            FD_ZERO(&readfds);
+            FD_SET(client, &readfds);
+            nfds = select(client+1, &readfds, NULL, NULL, &tv);
+            if(nfds < 0){
+                std::cerr << "select  error" << std::endl;
                 return "";
+            }else if(nfds == 0){
+                //std::cout << "timeout  error" << std::endl;
+                return "";
+            }else{
+                int nread = recv(client, recv_buffer, RECV_BUFF_LEN, 0);
+                if (nread < 0) {
+                    if (errno == EINTR)
+                        // the socket call was interrupted -- try again
+                        continue;
+                    else
+                        // an error occurred, so break out
+                        return "";
+                } else if (nread == 0) {
+                    // the socket is closed
+                    alive = false;
+                    return "";
+                }
+                // be sure to use append in case we have binary data
+                recv_string.append(recv_buffer, nread);
+                //std::cout << recv_string << std::endl;
             }
-            // be sure to use append in case we have binary data
-            request.append(recv_buffer, nread);
         }
+
+        line = recv_string.substr(0, idx + 2);
+        recv_string.erase(0, idx + 2);
+
+        if (line.find("[0]") != std::string::npos) continue;
+        else break;
     }
-    // a better server would cut off anything after the newline and
-    // save it in a cache
-    return request;
+
+    return line;
 }
 
 bool is_client_alive(int client_sock)
@@ -150,6 +172,8 @@ bool is_client_alive(int client_sock)
 
 int main(int argc, char *argv[])
 {
+    google::ParseCommandLineFlags(&argc, &argv, true);
+
     // signal process
     struct sigaction sig_int_handler;
     sig_int_handler.sa_handler = SignalHandler;
@@ -160,8 +184,8 @@ int main(int argc, char *argv[])
     sigaction(SIGPIPE, &sig_int_handler, NULL);
 
     ////
-    std::string source = "default";
-    bool enable_wav_log = true;
+    //std::string source = "default";
+    //bool enable_wav_log = true;
 
     // init librespeaker
     std::unique_ptr<PulseCollectorNode> collector;
@@ -169,18 +193,18 @@ int main(int argc, char *argv[])
     std::unique_ptr<VepDoaKwsNode> vep_kws;
     std::unique_ptr<ReSpeaker> respeaker;
 
-    collector.reset(PulseCollectorNode::Create(source, 16000, BLOCK_SIZE_MS));
-    vep_bf.reset(VepAecBeamformingNode::Create(6, enable_wav_log));
+    collector.reset(PulseCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
+    vep_bf.reset(VepAecBeamformingNode::Create(6, FLAGS_enable_wav_log));
     // TODO: user gflags to pass in the resource path on command line
     // "./resources/snowboy.umdl"
-    vep_kws.reset(VepDoaKwsNode::Create("./resources/common.res",
-                                        "./resources/alexa.umdl",
-                                        "0.5",
+    vep_kws.reset(VepDoaKwsNode::Create(FLAGS_snowboy_res_path,
+                                        FLAGS_snowboy_model_path,
+                                        FLAGS_snowboy_sensitivity,
                                         10,
                                         true));
     //vep_kws->DisableAutoStateTransfer();
     vep_kws->SetTriggerPostConfirmThresholdTime(160);
-    vep_kws->SetAgcTargetLevelDbfs(10);
+    vep_kws->SetAgcTargetLevelDbfs(std::abs(FLAGS_agc_level));
     //collector->BindToCore(0);
     //vep_bf->BindToCore(1);
     vep_kws->BindToCore(2);
@@ -188,11 +212,16 @@ int main(int argc, char *argv[])
     vep_bf->Uplink(collector.get());
     vep_kws->Uplink(vep_bf.get());
 
-    respeaker.reset(ReSpeaker::Create());
+    if (FLAGS_debug) {
+        respeaker.reset(ReSpeaker::Create(DEBUG_LOG_LEVEL));
+    } else {
+        respeaker.reset(ReSpeaker::Create(INFO_LOG_LEVEL));
+    }
     respeaker->RegisterChainByHead(collector.get());
     respeaker->RegisterDirectionReporterNode(vep_kws.get());
     respeaker->RegisterHotwordDetectionNode(vep_kws.get());
     respeaker->RegisterOutputNode(vep_kws.get());
+
 
 
     int sock, client_sock, rval, un_size ;
@@ -224,8 +253,13 @@ int main(int argc, char *argv[])
     server.sun_family = AF_UNIX;
     strcpy(server.sun_path, SOCKET_FILE);
     unlink(SOCKET_FILE);
-    if ((bind(sock, (struct sockaddr *) &server, sizeof(struct sockaddr_un))) < 0){
+    if (bind(sock, (struct sockaddr *) &server, sizeof(struct sockaddr_un)) < 0){
         std::cerr << "error when binding stream socket" << std::endl;
+        close(sock);
+        exit(1);
+    }
+    if (chmod(SOCKET_FILE, S_IRWXU | S_IRWXG | S_IRWXO) < 0) {
+        std::cerr << "error when changing the permission of the socket file" << std::endl;
         close(sock);
         exit(1);
     }
@@ -266,15 +300,22 @@ int main(int argc, char *argv[])
             while (!stop && !socket_error)
             {
                 // check if the client socket is still alive
-                if (!is_client_alive(client_sock)) {
+                //if (!is_client_alive(client_sock)) {
+                //    std::cerr << "client socket is closed, drop it" << std::endl;
+                //    socket_error = true;
+                //    break;
+                //}
+
+                // wait for the ready signal
+                bool alive = true;
+                one_line = cut_line(client_sock, alive);
+                if (!alive) {
                     std::cerr << "client socket is closed, drop it" << std::endl;
                     socket_error = true;
                     break;
                 }
-
-                // wait for the ready signal
-                one_line = cut_line(client_sock);
-                if(one_line != ""){
+                if (one_line != "") {
+                    //std::cout << one_line << std::endl;
                     if(one_line.find("ready") != std::string::npos) {
                         cloud_ready = true;
                         std::cout << "cloud ready" << std::endl;
@@ -308,25 +349,32 @@ int main(int argc, char *argv[])
             while (!stop && !socket_error)
             {
                 // check if the client socket is still alive
-                if (!is_client_alive(client_sock)) {
+                //if (!is_client_alive(client_sock)) {
+                //    std::cerr << "client socket is closed, drop it" << std::endl;
+                //    socket_error = true;
+                //    break;
+                //}
+
+                // check cloud ready status
+                bool alive = true;
+                one_line = cut_line(client_sock, alive);
+                if (!alive) {
                     std::cerr << "client socket is closed, drop it" << std::endl;
                     socket_error = true;
                     break;
                 }
-
-                // check cloud ready status
-                one_line = cut_line(client_sock);
-                if(one_line != ""){
+                if (one_line != "") {
+                    //std::cout << one_line << std::endl;
                     if(one_line.find("ready") != std::string::npos) {
                         cloud_ready = true;
-                        std::cout << "cloud ready" << std::endl;
+                        //std::cout << "cloud ready" << std::endl;
                     } else if (one_line.find("connecting") != std::string::npos) {
                         cloud_ready = false;
                         std::cout << "cloud is reconnecting..." << std::endl;
                     }
                 }
 
-                if (tick++ % 12 == 0) {
+                if (FLAGS_debug && tick++ % 12 == 0) {
                     std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
                     vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
                 }
@@ -353,9 +401,11 @@ int main(int argc, char *argv[])
                         socket_error = true;
 
                     // now listen the data
+                    bool alive = true;
                     while (!stop && !socket_error) {
                         // 1st, check stop_capture command
-                        one_line = cut_line(client_sock);
+                        one_line = cut_line(client_sock, alive);
+                        if (!alive) socket_error = true;
                         if(one_line != ""){
                             if(one_line.find("stop_capture") != std::string::npos) {
                                 std::cout << "stop_capture" << std::endl;
@@ -372,7 +422,7 @@ int main(int argc, char *argv[])
                             break;
                         }
 
-                        if (tick++ % 12 == 0) {
+                        if (FLAGS_debug && tick++ % 12 == 0) {
                             std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
                             vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
                         }
