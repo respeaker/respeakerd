@@ -1,0 +1,4 @@
+#!/bin/bash
+
+source /home/respeaker/env/bin/activate
+python /home/respeaker/respeakerd/clients/Python/demo_respeaker_v2_vep_alexa_with_light.py

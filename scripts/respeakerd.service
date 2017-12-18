@@ -1,0 +1,15 @@
+# systemd service spec for pulseaudio running in system mode -- not recommended though!
+# on arch, put it under /etc/systemd/system/pulseaudio.service
+# start with: systemctl start pulseaudio.service
+# enable on boot: systemctl enable pulseaudio.service
+[Unit]
+Description=ReSpeaker Server
+After=avahi-daemon.service network.target
+
+[Service]
+ExecStart=/usr/local/bin/respeakerd --snowboy_res_path="/home/respeaker/resources/common.res" --snowboy_model_path="/home/respeaker/resources/alexa.umdl"
+User=respeaker
+
+
+[Install]
+WantedBy=multi-user.target

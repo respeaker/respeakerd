@@ -1,0 +1,14 @@
+# systemd service spec for pulseaudio running in system mode -- not recommended though!
+# on arch, put it under /etc/systemd/system/pulseaudio.service
+# start with: systemctl start pulseaudio.service
+# enable on boot: systemctl enable pulseaudio.service
+[Unit]
+Description=ReSpeaker Python Client
+After=respeakerd.service
+
+[Service]
+ExecStart=/usr/local/bin/respeaker_python_client
+User=respeaker
+
+[Install]
+WantedBy=multi-user.target
