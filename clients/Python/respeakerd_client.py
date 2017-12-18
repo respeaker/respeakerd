@@ -23,7 +23,7 @@ class RespeakerdClient(object):
             self.timeout = timeout
         else:
             self.timeout = SOCKET_TIMEOUT
-        
+
         self.sock = None
         self.lock = threading.Lock()    # protect self.sock object
         self.stop = False
@@ -54,11 +54,12 @@ class RespeakerdClient(object):
         with self.lock:
             logger.info("going to close the socket...")
             self.sock.close()
-    
+
     def send(self, json_obj):
         try:
             with self.lock:
-                self.sock.sendall(json.dumps(json_obj) + "\r\n")
+                msg = json.dumps(json_obj) + "\r\n"
+                self.sock.sendall(msg)
         except socket.error as e:
             if e.errno == 32:
                 raise DisconnectException
@@ -97,7 +98,7 @@ class RespeakerdClient(object):
 
 
     def try_get_json(self):
-        
+
         self.recv_all()
 
         if len(self.buff) < 2:
@@ -110,7 +111,7 @@ class RespeakerdClient(object):
                 json_obj = json.loads(line)
             except:
                 logger.warn('Can not decode json: {}'.format(line))
-            
+
         return json_obj
 
     def _cut_line(self):
@@ -127,11 +128,11 @@ class RespeakerdClient(object):
 if __name__ == "__main__":
 
     logging.basicConfig(level=logging.DEBUG)
-    
+
     client = RespeakerdClient()
     if not client.connect():
         sys.exit()
-    
+
     while True:
         try:
             print client.try_get_json()
@@ -141,5 +142,5 @@ if __name__ == "__main__":
             break
     client.close()
 
-    
+
 

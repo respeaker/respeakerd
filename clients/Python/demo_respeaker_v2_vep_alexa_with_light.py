@@ -61,11 +61,10 @@ def main():
     logging.basicConfig(level=logging.DEBUG)
     #logging.getLogger('avs.alexa').setLevel(logging.INFO)
     logging.getLogger('hpack.hpack').setLevel(logging.INFO)
-    # logging.getLogger('avs.alexa').setLevel(logging.INFO)
-    # logging.getLogger('avs.alexa').setLevel(logging.INFO)
-    # logging.getLogger('avs.alexa').setLevel(logging.INFO)
 
     en = mraa.Gpio(12)
+    if os.geteuid() != 0 :
+        time.sleep(1)
     en.dir(mraa.DIR_OUT)
     en.write(0)
 

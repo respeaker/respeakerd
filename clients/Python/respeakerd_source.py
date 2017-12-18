@@ -53,7 +53,6 @@ class RespeakerdSource(Element):
                     self.client_state = ST_CONN
                     while not self.event_queue.empty():
                         self.event_queue.get_nowait()
-                    self.event_queue.put(MESSAGES['ready'])
                 else:
                     time.sleep(1)
             else:
