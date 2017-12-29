@@ -45,6 +45,7 @@ using TimePoint = std::chrono::time_point<SteadyClock>;
 #define RECV_BUFF_LEN    1024
 #define STOP_CAPTURE_TIMEOUT    15000    //millisecond
 #define WAIT_READY_TIMEOUT      30000    //millisecond
+#define SKIP_KWS_TIME_ON_SPEAK  2000     //millisecond
 
 DEFINE_string(snowboy_res_path, "./resources/common.res", "the path to snowboay's resource file");
 DEFINE_string(snowboy_model_path, "./resources/alexa.umdl", "the path to snowboay's model file");
@@ -187,6 +188,13 @@ int main(int argc, char *argv[])
     //std::string source = "default";
     //bool enable_wav_log = true;
 
+    std::cout << "source: " << FLAGS_source << std::endl;
+    std::cout << "enable_wav_log: " << FLAGS_enable_wav_log << std::endl;
+    std::cout << "snowboy_res_path: " << FLAGS_snowboy_res_path << std::endl;
+    std::cout << "snowboy_model_path: " << FLAGS_snowboy_model_path << std::endl;
+    std::cout << "snowboy_sensitivity: " << FLAGS_snowboy_sensitivity << std::endl;
+    std::cout << "agc_level: " << FLAGS_agc_level << std::endl;
+
     // init librespeaker
     std::unique_ptr<PulseCollectorNode> collector;
     std::unique_ptr<VepAecBeamformingNode> vep_bf;
@@ -202,9 +210,9 @@ int main(int argc, char *argv[])
                                         FLAGS_snowboy_sensitivity,
                                         10,
                                         true));
-    //vep_kws->DisableAutoStateTransfer();
+    vep_kws->DisableAutoStateTransfer();
     vep_kws->SetTriggerPostConfirmThresholdTime(160);
-    vep_kws->SetAgcTargetLevelDbfs(std::abs(FLAGS_agc_level));
+    vep_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
     //collector->BindToCore(0);
     //vep_bf->BindToCore(1);
     vep_kws->BindToCore(2);
@@ -237,7 +245,7 @@ int main(int argc, char *argv[])
     int counter;
     uint16_t tick;
 
-    TimePoint on_detected, cur_time;
+    TimePoint on_detected, cur_time, on_speak;
 
     SNDFILE	*file ;
     SF_INFO	sfinfo ;
@@ -357,22 +365,27 @@ int main(int argc, char *argv[])
 
                 // check cloud ready status
                 bool alive = true;
-                one_line = cut_line(client_sock, alive);
-                if (!alive) {
-                    std::cerr << "client socket is closed, drop it" << std::endl;
-                    socket_error = true;
-                    break;
-                }
-                if (one_line != "") {
-                    //std::cout << one_line << std::endl;
-                    if(one_line.find("ready") != std::string::npos) {
-                        cloud_ready = true;
-                        //std::cout << "cloud ready" << std::endl;
-                    } else if (one_line.find("connecting") != std::string::npos) {
-                        cloud_ready = false;
-                        std::cout << "cloud is reconnecting..." << std::endl;
+                do {
+                    one_line = cut_line(client_sock, alive);
+                    if (!alive) {
+                        std::cerr << "client socket is closed, drop it" << std::endl;
+                        socket_error = true;
+                        break;
                     }
-                }
+                    if (one_line != "") {
+                        //std::cout << one_line << std::endl;
+                        if (one_line.find("ready") != std::string::npos) {
+                            cloud_ready = true;
+                            //std::cout << "cloud ready" << std::endl;
+                        } else if (one_line.find("connecting") != std::string::npos) {
+                            cloud_ready = false;
+                            std::cout << "cloud is reconnecting..." << std::endl;
+                        } else if (one_line.find("on_speak") != std::string::npos) {
+                            on_speak = SteadyClock::now();
+                            if (FLAGS_debug) std::cout << "on_speak..." << std::endl;
+                        }
+                    }
+                } while (one_line != "");
 
                 if (FLAGS_debug && tick++ % 12 == 0) {
                     std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
@@ -385,9 +398,11 @@ int main(int argc, char *argv[])
                 frames = one_block.length() / (sizeof(int16_t) * num_channels);
                 sf_writef_short(file, (const int16_t *)(one_block.data()), frames);
 
-                //std::cout << "+" << std::endl;
+                if (FLAGS_debug && detected && (SteadyClock::now() - on_speak) <= std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
+                    std::cout << "detected, but skipped!" << std::endl;
+                }
 
-                if (detected && cloud_ready) {
+                if (detected && cloud_ready && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
                     dir = respeaker->GetDirection();
 
                     on_detected = SteadyClock::now();
@@ -400,6 +415,7 @@ int main(int argc, char *argv[])
                     if(!blocking_send(client_sock, event_pkt_str))
                         socket_error = true;
 
+                    /*
                     // now listen the data
                     bool alive = true;
                     while (!stop && !socket_error) {
@@ -444,6 +460,15 @@ int main(int argc, char *argv[])
                     }
                     //std::this_thread::sleep_for(std::chrono::seconds(2));
                     respeaker->SetChainState(WAIT_TRIGGER_WITH_BGM);
+                    */
+                }
+                if (cloud_ready) {
+                    json audio = {{"type", "audio"}, {"data", base64::encode(one_block)}, {"direction", dir}};
+                    audio_pkt_str = audio.dump();
+                    audio_pkt_str += "\r\n";
+
+                    if(!blocking_send(client_sock, audio_pkt_str))
+                        socket_error = true;
                 }
             } // while
             respeaker->Stop();

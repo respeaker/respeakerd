@@ -75,31 +75,53 @@ def main():
 
     pixel_ring.think()
 
+    state = 'thinking'
+    last_dir = 0
+
     def on_ready():
+        global state
         print("===== on_ready =====\r\n")
+        state = 'off'
         pixel_ring.off()
         src.on_cloud_ready()
 
     def on_listening():
+        global state
+        global last_dir
         print("===== on_listening =====\r\n")
+        if state != 'detected':
+            print('The last dir is {}'.format(last_dir))
+            pixel_ring.wakeup(last_dir)
+        state = 'listening'
         pixel_ring.listen()
 
     def on_speaking():
+        global state
         print("===== on_speaking =====\r\n")
+        state = 'speaking'
+        src.on_speak()
         pixel_ring.speak()
 
     def on_thinking():
+        global state
         print("===== on_thinking =====\r\n")
+        state = 'thinking'
         src.stop_capture()
         pixel_ring.think()
 
     def on_off():
+        global state
         print("===== on_off =====\r\n")
+        state = 'off'
         pixel_ring.off()
 
     def on_detected(dir):
+        global state
+        global last_dir
         logging.info('detected at {}`'.format(dir))
-        pixel_ring.wakeup((dir + 30)%360)
+        state = 'detected'
+        last_dir = (dir + 30)%360
+        pixel_ring.wakeup(last_dir)
         alexa.listen()
 
     alexa.state_listener.on_listening = on_listening

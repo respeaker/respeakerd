@@ -43,12 +43,14 @@ respeakerd 暴露 unix domain socket 于/tmp/respeakerd.sock 文件. 此 socket 
 
 ### A.2 输入通道 json 格式
 
-目前支持2个指令:
+目前支持以下指令:
 
 {"type": "status", "data": "ready"}    # alexa 连接上云, 可以开始接受指令
 
 {"type": "status", "data": "connecting"}    # alexa 与云失去连接, 此时不接受指令, client 端应该负责用ui 提供用户此状态.
 
 {"type": "cmd", "data": "stop_capture"}    # alexa 检测到语音指令结束, 需要底层停止录音
+
+{"type": "cmd", "data": "on_speak"}    # alexa 正在播放语音, 在刚开始播的前几秒需要禁止 hotword detection, 因为在此几秒内, AEC 无法应对突兀的大音量
 
 

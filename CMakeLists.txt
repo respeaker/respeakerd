@@ -14,3 +14,7 @@ string(FIND ${arch} "86" is_x86)
 string(FIND ${arch} "arm" is_arm)
 
 ADD_SUBDIRECTORY(src)
+
+#install(FILES ${PROJECT_SOURCE_DIR}/scripts/client.conf
+#              ${PROJECT_SOURCE_DIR}/scripts/system.pa
+#        DESTINATION /etc/pulse/)

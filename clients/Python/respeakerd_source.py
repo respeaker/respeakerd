@@ -22,7 +22,8 @@ ST_CONN = 2
 MESSAGES = {
     "ready": {"type": "status", "data": "ready"},
     "connecting": {"type": "status", "data": "connecting"},
-    "stop_capture": {"type": "cmd", "data": "stop_capture"}
+    "stop_capture": {"type": "cmd", "data": "stop_capture"},
+    "on_speak": {"type": "cmd", "data": "on_speak"}
 }
 
 class RespeakerdSource(Element):
@@ -132,6 +133,9 @@ class RespeakerdSource(Element):
 
     def on_cloud_ready(self):
         self.cloud_state = MESSAGES['ready']
+
+    def on_speak(self):
+        self.event_queue.put(MESSAGES['on_speak'])
 
     def on_disconnected(self):
         self.cloud_state = MESSAGES['connecting']
