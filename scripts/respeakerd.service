@@ -7,8 +7,8 @@ Description=ReSpeaker Server
 After=avahi-daemon.service network.target
 
 [Service]
-ExecStart=/usr/local/bin/respeakerd --snowboy_res_path="/home/respeaker/resources/common.res" --snowboy_model_path="/home/respeaker/resources/alexa.umdl"
-# User=respeaker
+ExecStart=/usr/local/bin/respeakerd --snowboy_res_path="/home/respeaker/build/resources/common.res" --snowboy_model_path="/home/respeaker/build/resources/alexa.umdl"
+User=respeaker
 
 
 [Install]
