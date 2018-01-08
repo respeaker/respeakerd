@@ -7,9 +7,11 @@ respeakerd and librespeaker will be delivered to SEEED's ODM customers, under ND
 
 ### 1. Preparations
 
-#### Backup
+#### Backup and upgrade
 
-Backup your current workspace and upgrade the system of ReSpeaker v2 to `2018-1-xx`. You can backup your workspace to the onboard eMMC. If your onboard eMMC isn't formated, format it via `fdisk` and mount it.
+Backup your current workspace and upgrade the system of ReSpeaker v2 to `20180107`. You can backup your workspace to the onboard eMMC. If your onboard eMMC isn't formated, format it via `fdisk` and mount it.
+
+OneDrive download link: https://bfaceafsieduau-my.sharepoint.com/personal/miaojg22_off365_cn/_layouts/15/guestaccess.aspx?folderid=0bb3c4f3f122d4c2bb0f65eee2b5938f8&authkey=AfLSkcE8QeeUHTQ8GGfrrsU
 
 #### librespeaker
 
@@ -32,7 +34,7 @@ $ sudo apt --fix-broken install
 
 You'd better double check the ALSA configuration of your system.
 
-a. Make sure there's no self-defined asound.conf in `/etc`.
+a. Make sure there's no self-defined asound.conf in `/etc/asound.conf`.
 
 b. Check the volume settings for the playback and cpature devices:
 
@@ -76,9 +78,9 @@ If you see the following printings, it is loaded.
 48-    	Properties:
 ```
 
-e. Make sure there's no manually added ALSA devices in `/etc/pulse/default.pa`. All the sound devices should be discovered by the udev-detect module.
+e. Make sure there's no manually added ALSA devices in `/etc/pulse/default.pa`. All the sound devices should be discovered by the udev-detect module. If you have never touched this file, forget about this step.
 
-And then restart PulseAudio with:
+Now restart PulseAudio with:
 
 ```shell
 $ pulseaudio -k
@@ -115,8 +117,21 @@ Open another terminal.
 $ cd ~/respeakerd/clients/Python
 $ sudo pip install avs pixel_ring voice-engine
 $ sudo apt install  python-mraa python-upm libmraa1 libupm1 mraa-tools
-$ python demo_respeaker_v2_vep_alexa_with_light.py
-
 ```
+
+Authorize Alexa with your Amazon account:
+```shell
+$ alexa-auth
+```
+
+Now connect to the GUI desktop of the ReSpeaker's system via VNC, open the builtin browser, visit http://127.0.0.1:3000, do the OAuth.
+
+Run the demo now:
+
+```shell
+$ python demo_respeaker_v2_vep_alexa_with_light.py
+```
+
+The hotword is `snowboy`.
 
 
