@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-respeakerd is the server application for the microphone array solutions of SEEED, based on `librespeaker` which combines the audio front-end processing algorithms.
+`respeakerd` is the server application for the microphone array solutions of SEEED, based on `librespeaker` which combines the audio front-end processing algorithms.
 
 It's also a good example on how to utilize the `librespeaker`. Users can implement their own server application / daemon to invoke `librespeaker`.
 
@@ -15,7 +15,6 @@ This manual shows how to compile and run this project `respeakerd`, and then int
 - json: https://github.com/nlohmann/json, header only
 - base64: https://github.com/tplgy/cppcodec, header only
 - gflags: https://gflags.github.io/gflags/, precompiled for ARM platform
-- log4cplus: logging library, not used at now.
 - libsndfile1-dev libasound2-dev: save PCM to wav file
 - cmake
 - librespeaker
@@ -37,56 +36,77 @@ $ cd PROJECT-ROOT/build
 $ ./respeakerd -help
 ```
 
+```shell
+-agc_level (dBFS for AGC, the range is [-31, 0]) type: int32 default: -10
+-debug (print more message) type: bool default: false
+-enable_wav_log (enable VEP to log its input and output into wav files) type: bool default: false
+-snowboy_model_path (the path to snowboay's model file) type: string default: "./resources/alexa.umdl"
+-snowboy_res_path (the path to snowboay's resource file) type: string default: "./resources/common.res"
+-snowboy_sensitivity (the sensitivity of snowboay) type: string default: "0.5"
+-source (the source of pulseaudio) type: string default: "default"
+```
+
 ## 4. Co-work conventions
 
 ### 4.1 git flow
 
-采用经典 git-flow 工作流, 即 dev 为开发分支, master 为生产分支, 每个开发者必须基于 dev 分支新建 feature 分支进行新功能开发. 达到 milestone 后由管理员进行 release 流程 - 建立 release 分支, 并发布测试, 测试无问题后由管理员将  release 分支合并进 master 分支, 并打版本标签.
+Project developers/contributors please follow the classical git-flow workflow, that is, `dev` is the devlopment branch, `master` is the production branch, create `feature` branches based on `dev` branch. The `master` branch is protected, project administrator will merge `dev` into `master` after milestone.
 
+采用经典 git-flow 工作流, 即 dev 为开发分支, master 为生产分支, 每个开发者必须基于 dev 分支新建 feature 分支进行新功能开发. 达到 milestone 后由管理员进行 release 流程 - 建立 release 分支, 并发布测试, 测试无问题后由管理员将  release 分支合并进 master 分支, 并打版本标签.
 参考: https://danielkummer.github.io/git-flow-cheatsheet/index.zh_CN.html
 
-Project developers please follow the classical git-flow workflow, that is, `dev` is the devlopment branch, `master` is the production branch, create `feature` branches based on `dev` branch. The `master` branch is protected, project administrator will merge `dev` into `master` after milestone.
+## Appendix A. Socket protocol
 
+`respeakerd` exposes unix domain socket at `/tmp/respeakerd.sock`, this socket is a duplex stream socket, including `input channel` and `output channel`.
 
-## 附 A. Socket protocol
+Output channel: `respeakerd` outputs audio data and events to clients.
 
-respeakerd 暴露 unix domain socket 于/tmp/respeakerd.sock 文件. 此 socket 为 stream 型 socket, 双工, 分输出和输入通道.
-respeakerd exposes unix domain socket at `/tmp/respeakerd.sock`, this socket is a duplex stream socket, including input channel and output channel.
+Input channel: clients report messages to `respeakerd`, e.g. cloud_ready status message.
 
-输出通道: 输出音频数据块及事件给 client 端;
-Output channel: respeakerd outputs audio data and events to clients.
+Please note that for now the `respeakerd` only accepts one client connection.
 
-输入通道: client 端向 server 端(respeakerd)传递信息, 例如: stop_capture 指令.
-Input channel: clients report messages to respeakerd, e.g. stop_capture command.
+The messages are wrapped in json format, splited by "\r\n", like:
 
-输出和输入通道上均采用 json 封装数据, 以 "\r\n" 分包, 即:
-The messages are wrapped in json format, splited by "\r\n",
-
+```json
 {json-packet}\r\n{json-packet}\r\n{json-packet}\r\n
+```
 
-### A.1 输出通道 json 格式 | The json structure of input channel
+### A.1 The json structure of output channel
 
-{"type": "audio", "data": "base64编码的x毫秒音频数据", "direction": 浮点数表示的方向角度}
+```json
 {"type": "audio", "data": "audio data encoded with base64", "direction": float number in degree unit}
+```
 
-{"type": "event", "data": "hotword", "direction": 浮点数表示的方向角度}
+```json
 {"type": "event", "data": "hotword", "direction": float number in degree unit}
+```
 
-### A.2 输入通道 json 格式 | The json structure of output channel
+### A.2 The json structure of input channel
 
-目前支持以下指令:
-Now the following commands are supported:
+For now the following messages are supported:
 
-{"type": "status", "data": "ready"}    # alexa 连接上云, 可以开始接受指令
-{"type": "status", "data": "ready"}    # alexa connected to the Cloud, respeakerd can now accept voice commands
+```json
+{"type": "status", "data": "ready"}
+```
 
-{"type": "status", "data": "connecting"}    # alexa 与云失去连接, 此时不接受指令, client 端应该负责用ui 提供用户此状态.
-{"type": "status", "data": "connecting"}    # alexa lost connection to the Cloud, respeakerd can't accept voice commands until `ready` state.
+This is a status message which indicates that the client application has just connected to the cloud (here this client is both a client of respeakerd and a client of ASR cloud, e.g. Alexa Voice Service), respeakerd can now accept voice commands. In the following of this muanual, we illustrate all the mentions of cloud with Alexa.
 
-{"type": "cmd", "data": "stop_capture"}    # alexa 检测到语音指令结束, 需要底层停止录音
-{"type": "cmd", "data": "stop_capture"}    # alexa detected the end of a sentence, respeakerd can handle this event selectively.
+```json
+{"type": "status", "data": "connecting"}
+```
 
-{"type": "cmd", "data": "on_speak"}    # alexa 正在播放语音, 在刚开始播的前几秒需要禁止 hotword detection, 因为在此几秒内, AEC 无法应对突兀的大音量
-{"type": "cmd", "data": "on_speak"}    # alexa begin to play speech synthesis, respeakerd should stop hotword detection at the very beginning few seconds, because the AEC algorithm can't bear the sudden increase of volume.
+This is a status message which indicates that Alexa client has just lost connection to the cloud, respeakerd can't accept voice commands until `ready` state.
+
+```json
+{"type": "cmd", "data": "stop_capture"}
+```
+
+This is a command message issued from the client. Generally the client gets this message from Alexa cloud, as Alexa has detected the end of a sentence. `respeakerd` hasn't utilize this message for now, it just keeps posting data to the client, becuase the base library the client is using - `voice-engine` - does drop packets when Alexa isn't available to receive inputs.
+
+```json
+{"type": "status", "data": "on_speak"}
+```
+
+This is a status message which indicates that the client has just received the speech synthesis from Alexa and will begin to play. `respeakerd` utilizes this status to enhence the algorithms. It's recommended that the client should capture this event and pass it down to `respeakerd` if you're doing your own client application.
 
 
