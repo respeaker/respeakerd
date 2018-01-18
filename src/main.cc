@@ -29,11 +29,6 @@ extern "C"
 #include "cppcodec/base64_default_rfc4648.hpp"
 #include "gflags/gflags.h"
 
-// enable asio debugging
-// #ifndef NDEBUG
-// #define ASIO_ENABLE_BUFFER_DEBUGGING
-// #define ASIO_ENABLE_HANDLER_TRACKING
-// #endif
 using namespace respeaker;
 using json = nlohmann::json;
 using base64 = cppcodec::base64_rfc4648;
@@ -184,10 +179,6 @@ int main(int argc, char *argv[])
     sigaction(SIGTERM, &sig_int_handler, NULL);
     sigaction(SIGPIPE, &sig_int_handler, NULL);
 
-    ////
-    //std::string source = "default";
-    //bool enable_wav_log = true;
-
     std::cout << "source: " << FLAGS_source << std::endl;
     std::cout << "enable_wav_log: " << FLAGS_enable_wav_log << std::endl;
     std::cout << "snowboy_res_path: " << FLAGS_snowboy_res_path << std::endl;
@@ -203,8 +194,6 @@ int main(int argc, char *argv[])
 
     collector.reset(PulseCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
     vep_bf.reset(VepAecBeamformingNode::Create(6, FLAGS_enable_wav_log));
-    // TODO: user gflags to pass in the resource path on command line
-    // "./resources/snowboy.umdl"
     vep_kws.reset(VepDoaKwsNode::Create(FLAGS_snowboy_res_path,
                                         FLAGS_snowboy_model_path,
                                         FLAGS_snowboy_sensitivity,
@@ -412,63 +401,18 @@ int main(int argc, char *argv[])
                     event_pkt_str = event.dump();
                     event_pkt_str += "\r\n";
 
-                    if(!blocking_send(client_sock, event_pkt_str))
+                    if (!blocking_send(client_sock, event_pkt_str)) {
                         socket_error = true;
-
-                    /*
-                    // now listen the data
-                    bool alive = true;
-                    while (!stop && !socket_error) {
-                        // 1st, check stop_capture command
-                        one_line = cut_line(client_sock, alive);
-                        if (!alive) socket_error = true;
-                        if(one_line != ""){
-                            if(one_line.find("stop_capture") != std::string::npos) {
-                                std::cout << "stop_capture" << std::endl;
-                                break;
-                            } else if (one_line.find("connecting") != std::string::npos) {
-                                cloud_ready = false;
-                                std::cout << "cloud is reconnecting..." << std::endl;
-                                break;
-                            }
-
-                        }
-                        if (SteadyClock::now() - on_detected > std::chrono::milliseconds(STOP_CAPTURE_TIMEOUT)) {
-                            std::cout << "stop_capture by timeout" << std::endl;
-                            break;
-                        }
-
-                        if (FLAGS_debug && tick++ % 12 == 0) {
-                            std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
-                            vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
-                        }
-
-                        one_block = respeaker->Listen();
-                        //std::cout << "*" << std::flush;
-                        frames = one_block.length() / (sizeof(int16_t) * num_channels);
-                        sf_writef_short(file, (const int16_t *)(one_block.data()), frames);
-
-                        // send the data to client
-                        // base64_len = one_block.length();
-                        // std::cout << base64_len << std::endl;
-                        json audio = {{"type", "audio"}, {"data", base64::encode(one_block)}, {"direction", dir}};
-                        audio_pkt_str = audio.dump();
-                        audio_pkt_str += "\r\n";
-
-                        if(!blocking_send(client_sock, audio_pkt_str))
-                            socket_error = true;
                     }
-                    //std::this_thread::sleep_for(std::chrono::seconds(2));
-                    respeaker->SetChainState(WAIT_TRIGGER_WITH_BGM);
-                    */
                 }
                 if (cloud_ready) {
                     json audio = {{"type", "audio"}, {"data", base64::encode(one_block)}, {"direction", dir}};
                     audio_pkt_str = audio.dump();
                     audio_pkt_str += "\r\n";
 
-                    if(!blocking_send(client_sock, audio_pkt_str))
+                    if (!blocking_send(client_sock, audio_pkt_str)) {
                         socket_error = true;
+                    }
                 }
             } // while
             respeaker->Stop();

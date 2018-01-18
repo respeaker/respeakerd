@@ -23,7 +23,7 @@ MESSAGES = {
     "ready": {"type": "status", "data": "ready"},
     "connecting": {"type": "status", "data": "connecting"},
     "stop_capture": {"type": "cmd", "data": "stop_capture"},
-    "on_speak": {"type": "cmd", "data": "on_speak"}
+    "on_speak": {"type": "status", "data": "on_speak"}
 }
 
 class RespeakerdSource(Element):
