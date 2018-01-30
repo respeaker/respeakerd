@@ -2,8 +2,6 @@
 
 respeakerd is the server application for the microphone array solutions of SEEED, based on librespeaker which combines the audio front-end processing algorithms.
 
-respeakerd and librespeaker will be delivered to SEEED's ODM customers, under NDA. Without the permission of SEEED, any party is not allowed to distribute the copy of the softwares to 3rd parties.
-
 ## How to run
 
 ### 1. Preparations
