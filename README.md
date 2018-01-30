@@ -8,11 +8,13 @@ respeakerd and librespeaker will be delivered to SEEED's ODM customers, under ND
 
 ### 1. Preparations
 
-#### Backup and upgrade
+#### System upgrade
 
-Backup your current workspace and upgrade the system of ReSpeaker v2 to version `20180107` or later. You can backup your workspace to the onboard eMMC. If your onboard eMMC isn't formated, format it via `fdisk` and mount it.
+The system running on ReSpeaker v2 should be upgraded to version `20180107` or later, as from that version on, many fixes for PulseAudio configuration has been applied.
 
 OneDrive download link: https://bfaceafsieduau-my.sharepoint.com/personal/miaojg22_off365_cn/_layouts/15/guestaccess.aspx?folderid=0bb3c4f3f122d4c2bb0f65eee2b5938f8&authkey=AfLSkcE8QeeUHTQ8GGfrrsU
+
+You can backup your workspace to the onboard eMMC. If your onboard eMMC isn't formated, format it via `fdisk` and mount it.
 
 #### librespeaker
 
@@ -22,7 +24,7 @@ librespeaker is distributed via Debian apt (stored in Seeed's repo), installatio
 $ sudo apt install librespeaker
 ```
 
-To know more about librespeaker, please go to the documentation: TODO
+To know more about librespeaker, please go to the documentation: http://respeaker.io/librespeaker_doc
 
 #### Audio configurations
 
