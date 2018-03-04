@@ -18,6 +18,7 @@ This manual shows how to compile and run this project `respeakerd`, and then int
 - libsndfile1-dev libasound2-dev: save PCM to wav file
 - cmake
 - librespeaker
+- libdbus-c++-dev
 
 ### 2.2 Compile
 
@@ -54,6 +55,24 @@ Project developers/contributors please follow the classical git-flow workflow, t
 
 采用经典 git-flow 工作流, 即 dev 为开发分支, master 为生产分支, 每个开发者必须基于 dev 分支新建 feature 分支进行新功能开发. 达到 milestone 后由管理员进行 release 流程 - 建立 release 分支, 并发布测试, 测试无问题后由管理员将  release 分支合并进 master 分支, 并打版本标签.
 参考: https://danielkummer.github.io/git-flow-cheatsheet/index.zh_CN.html
+
+## 5. PulseAudio mode (under dev)
+
+### 5.1 PulseAudio configuratin
+
+sudo vim /etc/pulse/default.pa
+
+Add the following line to the end of the file:
+
+load-module module-pipe-source source_name="respeakerd_output" rate=16000 channels=1
+
+### 5.2 Start `respeakerd` in PulseAudio mode
+
+```
+src/respeakerd -mode=pulse
+```
+
+Specify other options if you need. Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will get blocked. But this is not a big deal. Let's move on to the setup of Alexa C++ SDK example App.
 
 ## Appendix A. Socket protocol
 

@@ -5,7 +5,9 @@
 #include <sys/select.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <fcntl.h>
 #include <errno.h>
+#include <dbus/dbus.h>
 #include <cstring>
 #include <memory>
 #include <iostream>
@@ -48,7 +50,11 @@ DEFINE_string(snowboy_sensitivity, "0.5", "the sensitivity of snowboay");
 DEFINE_string(source, "default", "the source of pulseaudio");
 DEFINE_int32(agc_level, -10, "dBFS for AGC, the range is [-31, 0]");
 DEFINE_bool(debug, false, "print more message");
-DEFINE_bool(enable_wav_log, false, "enable VEP to log its input and output into wav files");
+DEFINE_bool(enable_wav_log, false, "enable logging audio streams into wav files for VEP and respeakerd");
+
+DEFINE_string(mode, "standard", "the mode of respeakerd, can be standard, pulse");
+DEFINE_string(fifo_file, "/tmp/music.input", "the path of the fifo file when enable pulse mode");
+
 
 static bool stop = false;
 static char recv_buffer[RECV_BUFF_LEN];
@@ -166,6 +172,66 @@ bool is_client_alive(int client_sock)
     return true;
 }
 
+bool file_exist(const char* filename)
+{
+    struct stat buffer;
+    return (stat(filename, &buffer) == 0);
+}
+
+/**
+ * Connect to the DBUS bus and send a broadcast signal
+ */
+void dbus_send_signal(DBusConnection *conn, int direction)
+{
+    DBusMessage *msg;
+    DBusMessageIter args;
+    dbus_uint32_t serial = 0;
+
+    std::cout << "going to send d-bus signal with direction: " << direction << std::endl;
+
+    // create a signal & check for errors
+    msg = dbus_message_new_signal("/io/respeaker/respeakerd", // object name of the signal
+                                  "respeakerd.signal", // interface name of the signal
+                                  "trigger"); // name of the signal
+    if (!msg) {
+        std::cerr << "create dbus message(signal) failed" << std::endl;
+        exit(3);
+    }
+
+    // append arguments onto signal
+    dbus_message_iter_init_append(msg, &args);
+    if (!dbus_message_iter_append_basic(&args, DBUS_TYPE_INT32, &direction)) {
+        std::cerr << "create dbus message(signal) failed when adding payload" << std::endl;
+        exit(3);
+    }
+
+    // send the message and flush the connection
+    if (!dbus_connection_send(conn, msg, &serial)) {
+        std::cerr << "sending dbus message failed" << std::endl;
+        exit(3);
+    }
+    dbus_connection_flush(conn);
+
+    std::cout << "dbus signal sent" << std::endl;
+
+    // free the message
+    dbus_message_unref(msg);
+}
+
+/**
+ * Pop a singal message from the dbus if there's any
+ */
+DBusMessage* dbus_pop_message(DBusConnection *conn)
+{
+    DBusMessage *msg;
+
+    // non blocking read of the next available message
+    dbus_connection_read_write(conn, 0);
+    msg = dbus_connection_pop_message(conn);
+
+    return msg;
+}
+
 int main(int argc, char *argv[])
 {
     google::ParseCommandLineFlags(&argc, &argv, true);
@@ -185,6 +251,13 @@ int main(int argc, char *argv[])
     std::cout << "snowboy_model_path: " << FLAGS_snowboy_model_path << std::endl;
     std::cout << "snowboy_sensitivity: " << FLAGS_snowboy_sensitivity << std::endl;
     std::cout << "agc_level: " << FLAGS_agc_level << std::endl;
+    std::cout << "mode: " << FLAGS_mode << std::endl;
+    std::cout << "fifo_file: " << FLAGS_fifo_file << std::endl;
+
+    int mode = 0; //standard
+    if (FLAGS_mode == "pulse") {
+        mode = 1;
+    }
 
     // init librespeaker
     std::unique_ptr<PulseCollectorNode> collector;
@@ -219,9 +292,7 @@ int main(int argc, char *argv[])
     respeaker->RegisterHotwordDetectionNode(vep_kws.get());
     respeaker->RegisterOutputNode(vep_kws.get());
 
-
-
-    int sock, client_sock, rval, un_size ;
+    int sock, client_sock, rval, un_size, fd;
     struct sockaddr_un server, new_addr;
     char buf[1024];
     bool socket_error, detected, cloud_ready;
@@ -231,78 +302,108 @@ int main(int argc, char *argv[])
     int frames;
     size_t base64_len;
 
-    int counter;
     uint16_t tick;
 
     TimePoint on_detected, cur_time, on_speak;
 
-    SNDFILE	*file ;
-    SF_INFO	sfinfo ;
+    SNDFILE	*snd_file;
+    SF_INFO	sfinfo;
 
-    // init the socket
-    sock = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (sock < 0) {
-        std::cerr << "error when opening stream socket" << std::endl;
-        exit(1);
-    }
-    // init bind
-    memset(&server, 0, sizeof(server));
-    server.sun_family = AF_UNIX;
-    strcpy(server.sun_path, SOCKET_FILE);
-    unlink(SOCKET_FILE);
-    if (bind(sock, (struct sockaddr *) &server, sizeof(struct sockaddr_un)) < 0){
-        std::cerr << "error when binding stream socket" << std::endl;
-        close(sock);
-        exit(1);
-    }
-    if (chmod(SOCKET_FILE, S_IRWXU | S_IRWXG | S_IRWXO) < 0) {
-        std::cerr << "error when changing the permission of the socket file" << std::endl;
-        close(sock);
-        exit(1);
-    }
-    // only accept 1 client
-    if ((listen(sock, 1)) < 0){
-        std::cerr << "cannot listen the client connect request" << std::endl;
-        close(sock);
-        exit(1);
+    DBusConnection *dbus_conn;
+    DBusError dbus_err;
+
+    if (mode == 0) {
+        // init the socket
+        sock = socket(AF_UNIX, SOCK_STREAM, 0);
+        if (sock < 0) {
+            std::cerr << "error when opening stream socket" << std::endl;
+            exit(1);
+        }
+        // init bind
+        memset(&server, 0, sizeof(server));
+        server.sun_family = AF_UNIX;
+        strcpy(server.sun_path, SOCKET_FILE);
+        unlink(SOCKET_FILE);
+        if (bind(sock, (struct sockaddr *) &server, sizeof(struct sockaddr_un)) < 0){
+            std::cerr << "error when binding stream socket" << std::endl;
+            close(sock);
+            exit(1);
+        }
+        if (chmod(SOCKET_FILE, S_IRWXU | S_IRWXG | S_IRWXO) < 0) {
+            std::cerr << "error when changing the permission of the socket file" << std::endl;
+            close(sock);
+            exit(1);
+        }
+        // only accept 1 client
+        if ((listen(sock, 1)) < 0){
+            std::cerr << "cannot listen the client connect request" << std::endl;
+            close(sock);
+            exit(1);
+        }
+    } else {
+        if (!file_exist(FLAGS_fifo_file.c_str())) {
+            std::cerr << "fifo file does not exist: " << FLAGS_fifo_file << std::endl;
+            exit(2);
+        }
+
+        std::cout << "get d-bus connection ..." << std::endl;
+
+        // initialise the errors
+        dbus_error_init(&dbus_err);
+
+        // connect to the bus and check for errors
+        dbus_conn = dbus_bus_get(DBUS_BUS_SYSTEM, &dbus_err);
+        if (dbus_error_is_set(&dbus_err)) {
+            std::cerr << "d-bus connection error: " << dbus_err.message << std::endl;
+            dbus_error_free(&dbus_err);
+        }
+        if (!dbus_conn) {
+            exit(3);
+        }
+
+        dbus_bus_add_match(dbus_conn, "type='signal',interface='respeakerd.signal'", &dbus_err); // see signals from the given interface
+        dbus_connection_flush(dbus_conn);
+        if (dbus_error_is_set(&dbus_err)) {
+            std::cerr << "d-bus add_match error: " << dbus_err.message << std::endl;
+            exit(3);
+        }
     }
 
 
     while(!stop){
-        un_size = sizeof(struct sockaddr_un);
-        client_sock = accept(sock, (struct sockaddr *)&new_addr, &un_size);
-        if (client_sock == -1) {
-            std::cerr << "socket accept error" << std::endl;
-            continue;
-        }else{
-            std::cout << "accepted socket client " << client_sock << std::endl;
-
-            if (!respeaker->Start(&stop)) {
-                std::cerr << "Can not start the respeaker node chain." << std::endl;
-                return -1;
+        if (mode == 0) {
+            un_size = sizeof(struct sockaddr_un);
+            client_sock = accept(sock, (struct sockaddr *)&new_addr, &un_size);
+            if (client_sock == -1) {
+                std::cerr << "socket accept error" << std::endl;
+                continue;
             }
+            std::cout << "accepted socket client: " << client_sock << std::endl;
+        } else {
+            fd = open(FLAGS_fifo_file.c_str(), O_WRONLY);  // will block here if there's no read-side on this fifo
+            std::cout << "connected to fifo file: " << FLAGS_fifo_file << std::endl;
+        }
 
-            size_t num_channels = respeaker->GetNumOutputChannels();
-            int rate = respeaker->GetNumOutputRate();
-            std::cout << "respeakerd output: num channels: " << num_channels << ", rate: " << rate << std::endl;
+        if (!respeaker->Start(&stop)) {
+            std::cerr << "Can not start the respeaker node chain." << std::endl;
+            return -1;
+        }
 
-            respeaker->Pause();
-            std::cout << "waiting for ready signal..." << std::endl;
+        size_t num_channels = respeaker->GetNumOutputChannels();
+        int rate = respeaker->GetNumOutputRate();
+        std::cout << "respeakerd output: num channels: " << num_channels << ", rate: " << rate << std::endl;
 
-            cur_time = SteadyClock::now();
-            socket_error = false;
-            cloud_ready = false;
+        respeaker->Pause();
+        std::cout << "waiting for ready signal..." << std::endl;
 
-            // wait the cloud to be ready
-            while (!stop && !socket_error)
-            {
-                // check if the client socket is still alive
-                //if (!is_client_alive(client_sock)) {
-                //    std::cerr << "client socket is closed, drop it" << std::endl;
-                //    socket_error = true;
-                //    break;
-                //}
+        cur_time = SteadyClock::now();
+        socket_error = false;
+        cloud_ready = false;
 
+        // wait the cloud to be ready
+        while (!stop && !socket_error)
+        {
+            if (mode == 0) {
                 // wait for the ready signal
                 bool alive = true;
                 one_line = cut_line(client_sock, alive);
@@ -319,40 +420,49 @@ int main(int argc, char *argv[])
                         break;
                     }
                 }
-                if (SteadyClock::now() - cur_time > std::chrono::milliseconds(WAIT_READY_TIMEOUT)) {
-                    std::cout << "wait ready timeout" << std::endl;
-                    socket_error = true;
-                    break;
+
+            } else {
+                // wait on d-bus for the 'ready' state
+                DBusMessage *msg = dbus_pop_message(dbus_conn);
+                if (msg) {
+                    if (dbus_message_is_signal(msg, "respeakerd.signal", "ready")) {
+                        cloud_ready = true;
+                        std::cout << "cloud ready" << std::endl;
+                    }
+                    dbus_message_unref(msg);
+                    if (cloud_ready) break;
                 }
             }
 
-            if (!socket_error) respeaker->Resume();
+            if (SteadyClock::now() - cur_time > std::chrono::milliseconds(WAIT_READY_TIMEOUT)) {
+                std::cout << "wait ready timeout" << std::endl;
+                socket_error = true;
+                break;
+            }
+        }
 
-            // init libsndfile
-            memset (&sfinfo, 0, sizeof (sfinfo));
+        if (!socket_error) respeaker->Resume();
+
+        // init libsndfile
+        if (FLAGS_enable_wav_log) {
+            memset(&sfinfo, 0, sizeof(sfinfo));
             sfinfo.samplerate	= rate ;
             sfinfo.channels		= num_channels ;
             sfinfo.format		= (SF_FORMAT_WAV | SF_FORMAT_PCM_24) ;
             std::ostringstream   file_name;
             file_name << "record_respeakerd_" << client_sock << ".wav";
-            if (! (file = sf_open (file_name.str().c_str(), SFM_WRITE, &sfinfo)))
+            if (! (snd_file = sf_open(file_name.str().c_str(), SFM_WRITE, &sfinfo)))
             {
                 std::cerr << "Error : Not able to open output file." << std::endl;
                 return -1 ;
             }
+        }
 
-            counter = 0;
-            tick = 0;
-            while (!stop && !socket_error)
-            {
-                // check if the client socket is still alive
-                //if (!is_client_alive(client_sock)) {
-                //    std::cerr << "client socket is closed, drop it" << std::endl;
-                //    socket_error = true;
-                //    break;
-                //}
-
-                // check cloud ready status
+        tick = 0;
+        while (!stop && !socket_error)
+        {
+            // check the status or events from the client side
+            if (mode == 0) {
                 bool alive = true;
                 do {
                     one_line = cut_line(client_sock, alive);
@@ -375,22 +485,43 @@ int main(int argc, char *argv[])
                         }
                     }
                 } while (one_line != "");
-
-                if (FLAGS_debug && tick++ % 12 == 0) {
-                    std::cout << "collector: " << collector->GetQueueDeepth() << ", vep1: " <<
-                    vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
+            } else {
+                // check singals on dbus
+                while (1) {
+                    DBusMessage *msg = dbus_pop_message(dbus_conn);
+                    if (msg) {
+                        if (dbus_message_is_signal(msg, "respeakerd.signal", "ready")) {
+                            cloud_ready = true;
+                        } else if (dbus_message_is_signal(msg, "respeakerd.signal", "connecting")) {
+                            cloud_ready = false;
+                            std::cout << "cloud is reconnecting..." << std::endl;
+                        } else if (dbus_message_is_signal(msg, "respeakerd.signal", "on_speak")) {
+                            on_speak = SteadyClock::now();
+                            if (FLAGS_debug) std::cout << "on_speak..." << std::endl;
+                        }
+                        dbus_message_unref(msg);
+                    } else break;
                 }
+            }
 
-                //if have a client connected,this respeaker always detect hotword,if there are hotword,send event and audio.
-                one_block = respeaker->DetectHotword(detected);
+            if (FLAGS_debug && tick++ % 12 == 0) {
+                std::cout << "collector depth: " << collector->GetQueueDeepth() << ", vep1: " <<
+                vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
+            }
 
+            //if have a client connected,this respeaker always detect hotword,if there are hotword,send event and audio.
+            one_block = respeaker->DetectHotword(detected);
+
+            if (FLAGS_enable_wav_log) {
                 frames = one_block.length() / (sizeof(int16_t) * num_channels);
-                sf_writef_short(file, (const int16_t *)(one_block.data()), frames);
+                sf_writef_short(snd_file, (const int16_t *)(one_block.data()), frames);
+            }
 
-                if (FLAGS_debug && detected && (SteadyClock::now() - on_speak) <= std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
-                    std::cout << "detected, but skipped!" << std::endl;
-                }
+            if (FLAGS_debug && detected && (SteadyClock::now() - on_speak) <= std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
+                std::cout << "detected, but skipped!" << std::endl;
+            }
 
+            if (mode == 0) {
                 if (detected && cloud_ready && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
                     dir = respeaker->GetDirection();
 
@@ -414,14 +545,35 @@ int main(int argc, char *argv[])
                         socket_error = true;
                     }
                 }
-            } // while
-            respeaker->Stop();
-            std::cout << "librespeaker cleanup done." << std::endl;
-            sf_close (file);
+            } else {
+                dir = respeaker->GetDirection();
+
+                if (detected && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
+                    dbus_send_signal(dbus_conn, dir);
+                }
+                // pulse mode, we just write the audio data into the fifo file
+                int ret = write(fd, one_block.data(), one_block.length());
+
+                if (ret < 0) {
+                    socket_error = true;
+                }
+            }
+        } // while
+        respeaker->Stop();
+        std::cout << "librespeaker cleanup done." << std::endl;
+
+        if (FLAGS_enable_wav_log) {
+            sf_close(snd_file);
         }
-        close(client_sock);
+
+        if (mode == 0) {
+            close(client_sock);
+        } else {
+            close(fd);
+        }
     }
-    close(sock);
+
+    if (mode == 0) close(sock);
 
     return 0;
 }

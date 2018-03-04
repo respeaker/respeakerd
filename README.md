@@ -24,6 +24,12 @@ $ sudo apt install librespeaker
 
 To know more about librespeaker, please go to the documentation: http://respeaker.io/librespeaker_doc
 
+#### Other dependences
+
+```shell
+$ sudo apt install libdbus-c++-dev
+```
+
 #### Audio configurations
 
 Though all the configurations are properly done within the system image, you're recommended to double check the configurations of your system, especially when you've changed something from the default.
@@ -89,7 +95,7 @@ This command kills the PulseAudio daemon, but PulseAudio will auto-spawn itself.
 
 ```shell
 $ cd ~
-$ git clone https://gitlab.com/seeedstudio/respeakerd.git
+$ git clone https://github.com/respeaker/respeakerd.git
 $ cd respeakerd/build
 $ chmod a+x respeakerd
 $ ./respeakerd -debug -snowboy_model_path="./resources/snowboy.umdl" -snowboy_res_path="./resources/common.res" -snowboy_sensitivity="0.4"
