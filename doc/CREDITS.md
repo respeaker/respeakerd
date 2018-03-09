@@ -64,10 +64,12 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 nlohmann/json
 =============
 
+```text
     __ _____ _____ _____
  __|  |   __|     |   | |  JSON for Modern C++
 |  |  |__   |  |  | | | |  version 2.1.1
 |_____|_____|_____|_|___|  https://github.com/nlohmann/json
+```
 
 Licensed under the MIT License <http://opensource.org/licenses/MIT>.
 Copyright (c) 2013-2017 Niels Lohmann <http://nlohmann.me>.
