@@ -422,6 +422,7 @@ int main(int argc, char *argv[])
                 }
 
             } else {
+#if 0
                 // wait on d-bus for the 'ready' state
                 DBusMessage *msg = dbus_pop_message(dbus_conn);
                 if (msg) {
@@ -432,6 +433,9 @@ int main(int argc, char *argv[])
                     dbus_message_unref(msg);
                     if (cloud_ready) break;
                 }
+#endif
+                cloud_ready = true;  // we dont need to wait cloud ready for Pulse mode
+                break;
             }
 
             if (SteadyClock::now() - cur_time > std::chrono::milliseconds(WAIT_READY_TIMEOUT)) {
@@ -546,9 +550,8 @@ int main(int argc, char *argv[])
                     }
                 }
             } else {
-                dir = respeaker->GetDirection();
-
                 if (detected && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
+                    dir = respeaker->GetDirection();
                     dbus_send_signal(dbus_conn, dir);
                 }
                 // pulse mode, we just write the audio data into the fifo file

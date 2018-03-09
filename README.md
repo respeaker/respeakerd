@@ -109,7 +109,7 @@ From        vep_amix_init() for    (complex_t*)vobj->amix->out[i] allocated  102
 From        vep_amix_init() for    (complex_t*)vobj->amix->out[i] allocated  1024 bytes, flags VCP_MEM_AMIX        , reg:  0, total: 0
 ```
 
-That's OK, let's go ahead to the setup of the Python client.
+That's OK, let's go ahead to the setup of the Python client. If you're having any issues running this application, try to re-compile it with the instructions here: doc/DEVELOPER_MANUAL.md - 2. How to compile.
 
 ### 3. Run Python client
 

@@ -65,6 +65,7 @@ sudo vim /etc/pulse/default.pa
 Add the following line to the end of the file:
 
 load-module module-pipe-source source_name="respeakerd_output" rate=16000 channels=1
+set-default-source respeakerd_output
 
 ### 5.2 Start `respeakerd` in PulseAudio mode
 
