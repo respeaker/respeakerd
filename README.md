@@ -10,7 +10,7 @@ respeakerd is the server application for the microphone array solutions of SEEED
 
 The system running on ReSpeaker v2 should be upgraded to version `20180107` or later, as from that version on, many fixes for PulseAudio configuration has been applied.
 
-OneDrive download link: https://bfaceafsieduau-my.sharepoint.com/personal/miaojg22_off365_cn/_layouts/15/guestaccess.aspx?folderid=0bb3c4f3f122d4c2bb0f65eee2b5938f8&authkey=AfLSkcE8QeeUHTQ8GGfrrsU
+OneDrive download link: <a href="https://bfaceafsieduau-my.sharepoint.com/personal/miaojg22_off365_cn/_layouts/15/guestaccess.aspx?folderid=0bb3c4f3f122d4c2bb0f65eee2b5938f8&authkey=AfLSkcE8QeeUHTQ8GGfrrsU"><img src="https://github.com/respeaker/get_started_with_respeaker/blob/master/img/onedrive.png?raw=true" height="25"></img></a>
 
 You can backup your workspace to the onboard eMMC. If your onboard eMMC isn't formated, format it via `fdisk` and mount it.
 
@@ -23,12 +23,6 @@ $ sudo apt install librespeaker
 ```
 
 To know more about librespeaker, please go to the documentation: http://respeaker.io/librespeaker_doc
-
-#### Other dependences
-
-```shell
-$ sudo apt install libdbus-c++-dev
-```
 
 #### Audio configurations
 
@@ -109,7 +103,9 @@ From        vep_amix_init() for    (complex_t*)vobj->amix->out[i] allocated  102
 From        vep_amix_init() for    (complex_t*)vobj->amix->out[i] allocated  1024 bytes, flags VCP_MEM_AMIX        , reg:  0, total: 0
 ```
 
-That's OK, let's go ahead to the setup of the Python client. If you're having any issues running this application, try to re-compile it with the instructions here: doc/DEVELOPER_MANUAL.md - 2. How to compile.
+That's OK, let's go ahead to the setup of the Python client. 
+
+Note: If you're having any issues running this application, try to re-compile it with the [instructions here](doc/DEVELOPER_MANUAL.md#2-how-to-compile).
 
 ### 3. Run Python client
 

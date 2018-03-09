@@ -18,7 +18,10 @@ This manual shows how to compile and run this project `respeakerd`, and then int
 - libsndfile1-dev libasound2-dev: save PCM to wav file
 - cmake
 - librespeaker
-- libdbus-c++-dev
+
+```shell
+$ sudo apt install -y librespeaker cmake
+```
 
 ### 2.2 Compile
 
@@ -26,6 +29,7 @@ This manual shows how to compile and run this project `respeakerd`, and then int
 $ cd PROJECT-ROOT/build
 $ cmake ..
 $ make
+$ cp src/respeakerd . && chmod a+x ./respeakerd
 ```
 
 ## 3. Command line parameters
@@ -45,6 +49,8 @@ $ ./respeakerd -help
 -snowboy_res_path (the path to snowboay's resource file) type: string default: "./resources/common.res"
 -snowboy_sensitivity (the sensitivity of snowboay) type: string default: "0.5"
 -source (the source of pulseaudio) type: string default: "default"
+-fifo_file (the path of the fifo file of PulseAudio pipe-source module when enabled pulse mode) type: string default: "/tmp/music.input", this is the default value of PulseAudio pipe-source module as well
+-mode (the mode of respeakerd, can be standard, pulse) type: string default: "standard"
 ```
 
 ## 4. Co-work conventions
@@ -64,16 +70,19 @@ sudo vim /etc/pulse/default.pa
 
 Add the following line to the end of the file:
 
+```text
 load-module module-pipe-source source_name="respeakerd_output" rate=16000 channels=1
 set-default-source respeakerd_output
+```
 
 ### 5.2 Start `respeakerd` in PulseAudio mode
 
 ```
-src/respeakerd -mode=pulse
+$ cd PROJECT-ROOT/build
+$ ./respeakerd -mode=pulse -source="alsa_input.platform-sound_0.seeed-8ch" -debug -snowboy_model_path="./resources/snowboy.umdl" -snowboy_res_path="./resources/common.res" -snowboy_sensitivity="0.4"
 ```
 
-Specify other options if you need. Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will get blocked. But this is not a big deal. Let's move on to the setup of Alexa C++ SDK example App.
+Specify other options if you need. Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will get blocked. But this is not a big deal. Now let's move on to the setup of Alexa C++ SDK example App [TODO].
 
 ## Appendix A. Socket protocol
 
