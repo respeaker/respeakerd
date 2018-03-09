@@ -17,6 +17,8 @@ message(STATUS "gflags is found at " ${LIBGFLAGS_PATH})
 
 pkg_check_modules(SNDFILE  REQUIRED  sndfile)
 
+pkg_check_modules(DBUS  REQUIRED  dbus-1)
+
 pkg_check_modules(LIBRESPEAKER  REQUIRED  respeaker)
 
 include_directories(
@@ -26,11 +28,13 @@ include_directories(
     ${PROJECT_SOURCE_DIR}/libs/gflags/include
     ${LIBRESPEAKER_INCLUDE_DIRS}
     ${SNDFILE_INCLUDE_DIRS}
+    ${DBUS_INCLUDE_DIRS}
 )
 
 link_directories(
     ${LIBRESPEAKER_LIBRARY_DIRS}
     ${SNDFILE_LIBRARY_DIRS}
+    ${DBUS_LIBRARY_DIRS}
 )
 
 set(CMAKE_CXX_FLAGS "-fPIC -std=c++11 -fpermissive")
@@ -45,6 +49,7 @@ target_link_libraries(respeakerd
     ${LIBGFLAGS_PATH} -lpthread -lm
     ${LIBRESPEAKER_LIBRARIES}
     ${SNDFILE_LIBRARIES}
+    ${DBUS_LIBRARIES}
 )
 
 #install(PROGRAMS ${PROJECT_BINARY_DIR}/src/respeakerd DESTINATION bin)

@@ -24,6 +24,12 @@ $ sudo apt install librespeaker
 
 To know more about librespeaker, please go to the documentation: http://respeaker.io/librespeaker_doc
 
+#### Other dependences
+
+```shell
+$ sudo apt install libdbus-c++-dev
+```
+
 #### Audio configurations
 
 Though all the configurations are properly done within the system image, you're recommended to double check the configurations of your system, especially when you've changed something from the default.
@@ -89,7 +95,7 @@ This command kills the PulseAudio daemon, but PulseAudio will auto-spawn itself.
 
 ```shell
 $ cd ~
-$ git clone https://gitlab.com/seeedstudio/respeakerd.git
+$ git clone https://github.com/respeaker/respeakerd.git
 $ cd respeakerd/build
 $ chmod a+x respeakerd
 $ ./respeakerd -debug -snowboy_model_path="./resources/snowboy.umdl" -snowboy_res_path="./resources/common.res" -snowboy_sensitivity="0.4"
@@ -103,7 +109,7 @@ From        vep_amix_init() for    (complex_t*)vobj->amix->out[i] allocated  102
 From        vep_amix_init() for    (complex_t*)vobj->amix->out[i] allocated  1024 bytes, flags VCP_MEM_AMIX        , reg:  0, total: 0
 ```
 
-That's OK, let's go ahead to the setup of the Python client.
+That's OK, let's go ahead to the setup of the Python client. If you're having any issues running this application, try to re-compile it with the instructions here: doc/DEVELOPER_MANUAL.md - 2. How to compile.
 
 ### 3. Run Python client
 
