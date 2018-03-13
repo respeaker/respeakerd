@@ -8,17 +8,17 @@ if [ $(echo "$R < 20180107"|bc) = 1 ]; then
     exit 1
 fi
 
-UID=`id -u`
+USER_ID=`id -u`
 
-if [ $UID != 1000 ]; then
+if [ ${USER_ID} != 1000 ]; then
     echo "Please run this script with user respeaker"
     exit 1
 fi
 
 ## prepare PulseAudio
-rm -rf ~/.config/pulse/client.conf
-pulseaudio -k
-sleep 1
+#rm -rf ~/.config/pulse/client.conf
+#pulseaudio -k
+#sleep 1
 
 SEEED_8MIC_EXISTS=`pactl list sources|grep alsa_input.platform-sound_0.seeed-8ch -c`
 
@@ -31,6 +31,7 @@ fi
 PULSE_SOURCE="alsa_input.platform-sound_0.seeed-8ch"
 
 ## Install deps
+sudo apt update
 sudo apt install -y librespeaker git cmake
 sudo apt install -y python-mraa python-upm libmraa1 libupm1 mraa-tools
 sudo pip install avs pixel_ring voice-engine
@@ -61,11 +62,11 @@ echo ""
 IP_ETH=`ifconfig eth0|grep inet|grep -v inet6|awk '{print $2}'`
 IP_WLAN=`ifconfig wlan0|grep inet|grep -v inet6|awk '{print $2}'`
 
-echo "Before we can run the Alexa demo, we need you to do the authorization for Alexa service."
+echo "Before we can run the Alexa demo, we need you to do the authorization for the Alexa service."
 echo "We need you to VNC connect to the board."
 echo "If you haven't practiced on VNC operation, please refer to:"
 echo "https://github.com/respeaker/get_started_with_respeaker/blob/master/docs/ReSpeaker_Core_V2/getting_started.md#2-vnc"
-echo "The IP address of your board are:"
+echo "The IP addresses of your board are:"
 if [ x${IP_ETH} != x ]; then
     echo "eth0: ${IP_ETH}"
 fi
@@ -80,7 +81,7 @@ read -n1 -r -p 'Press any key to continue ...' key
 
 echo "Open the browser inside the VNC desktop, and go to 'http://127.0.0.1:3000'"
 echo "Login with your Amazon account and authorize Alexa service"
-echo "When you finish that, press Ctrl+C to continue"
+echo "When you finish that, the script will continue, or press Ctrl+C to continue"
 
 alexa-auth
 
