@@ -52,7 +52,8 @@ target_link_libraries(respeakerd
     ${DBUS_LIBRARIES}
 )
 
-#install(PROGRAMS ${PROJECT_BINARY_DIR}/src/respeakerd DESTINATION bin)
+# strip the rpath for the executable
+install(TARGETS respeakerd DESTINATION ${PROJECT_BINARY_DIR}/)
 #install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/respeaker_python_client DESTINATION bin)
 #install(FILES ${PROJECT_SOURCE_DIR}/scripts/respeakerd.service
 #              ${PROJECT_SOURCE_DIR}/scripts/respeaker_python_client.service
