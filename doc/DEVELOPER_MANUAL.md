@@ -66,7 +66,9 @@ Project developers/contributors please follow the classical git-flow workflow, t
 
 ### 5.1 PulseAudio configuratin
 
-sudo vim /etc/pulse/default.pa
+```shell
+$ sudo vim /etc/pulse/default.pa
+```
 
 Add the following line to the end of the file:
 
