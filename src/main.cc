@@ -435,6 +435,7 @@ int main(int argc, char *argv[])
                 }
 #endif
                 cloud_ready = true;  // we dont need to wait cloud ready for Pulse mode
+                std::cout << "assuming cloud always ready for PulseAudio mode" << std::endl;
                 break;
             }
 
