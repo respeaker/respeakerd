@@ -63,27 +63,30 @@ IP_ETH=`ifconfig eth0|grep inet|grep -v inet6|awk '{print $2}'`
 IP_WLAN=`ifconfig wlan0|grep inet|grep -v inet6|awk '{print $2}'`
 
 echo "Before we can run the Alexa demo, we need you to do the authorization for the Alexa service."
-echo "We need you to VNC connect to the board."
-echo "If you haven't practiced on VNC operation, please refer to:"
+echo "We need you to VNC connect to the board. If you haven't practiced on VNC operation, please refer to:"
 echo "https://github.com/respeaker/get_started_with_respeaker/blob/master/docs/ReSpeaker_Core_V2/getting_started.md#2-vnc"
+echo ""
 echo "The IP addresses of your board are:"
 if [ x${IP_ETH} != x ]; then
-    echo "eth0: ${IP_ETH}"
+    echo "- eth0: ${IP_ETH}"
 fi
 
 if [ x${IP_WLAN} != x ]; then
-    echo "wlan0: ${IP_WLAN}"
+    echo "- wlan0: ${IP_WLAN}"
 fi
+echo ""
 
-echo "Have you got the VNC desktop?"
-
-read -n1 -r -p 'Press any key to continue ...' key
-
+# clear the input buffer
+read -d '' -t 0.1 -n 10000
+read -n1 -r -p 'Have you got the VNC desktop? Press any key to continue ...' key
+echo ""
+echo ""
+echo "------"
 echo "Open the browser inside the VNC desktop, and go to 'http://127.0.0.1:3000'"
-echo "Login with your Amazon account and authorize Alexa service"
+echo "Login with your Amazon account and authorize Alexa service."
 echo "When you finish that, the script will continue, or press Ctrl+C to continue"
 
-alexa-auth
+alexa-auth 2>&1 > /dev/null
 
 echo "Now run the Alexa demo via the following command, the trigger word is 'snowboy'"
 echo ""
