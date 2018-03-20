@@ -1,0 +1,11 @@
+[Unit]
+Description=Pixel Ring Server
+After=respeakerd.service network.target
+
+[Service]
+ExecStart=/usr/local/bin/pixel_ring_server
+User=respeaker
+
+
+[Install]
+WantedBy=multi-user.target

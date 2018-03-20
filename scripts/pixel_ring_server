@@ -34,11 +34,25 @@ class StateMachine(object):
 
     state = 'thinking'
     last_dir = 0
+    avs_ready = False
+    respeakerd_ready = False
 
     def on_ready(self):
         print("===== on_ready =====\r\n")
         self.state = 'off'
         pixel_ring.off()
+
+    def on_avs_ready(self):
+        print("avs ready...")
+        self.avs_ready = True
+        if self.avs_ready and self.respeakerd_ready:
+            self.on_ready()
+    
+    def on_respeakerd_ready(self):
+        print("respeakerd ready...")
+        self.respeakerd_ready = True
+        if self.avs_ready and self.respeakerd_ready:
+            self.on_ready()
 
     def on_detected(self, dir):
         print('===== on_detected =====\r\nat {}`\r\n'.format(dir))
@@ -79,6 +93,7 @@ def main():
     en.dir(mraa.DIR_OUT)
     en.write(0)
 
+    pixel_ring.set_brightness(100)
     pixel_ring.think()
 
     sm = StateMachine();
@@ -106,7 +121,9 @@ def main():
         elif signal == 'connecting':
             sm.on_thinking()
         elif signal == 'ready':
-            sm.on_ready()
+            sm.on_avs_ready()
+        elif signal == 'respeakerd_ready':
+            sm.on_respeakerd_ready()
 
     system_bus = SystemBus()
     loop = GLib.MainLoop()

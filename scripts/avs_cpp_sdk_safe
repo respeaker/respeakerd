@@ -1,0 +1,16 @@
+#!/bin/bash
+
+pulseaudio --check
+
+while [ $? == 1 ]; do
+    sleep 1
+    pulseaudio --check
+done
+
+while [ ! -p /tmp/music.input ]; do
+    sleep 1
+done
+
+sleep 5
+
+/home/respeaker/sdk-folder/sdk-build/SampleApp/src/SampleApp /home/respeaker/sdk-folder/sdk-build/Integration/AlexaClientSDKConfig.json debug2 disableStdin

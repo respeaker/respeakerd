@@ -41,13 +41,13 @@ git clone https://github.com/respeaker/respeakerd.git
 
 cd /home/respeaker/respeakerd
 
-sudo cp build/respeakerd /usr/local/bin
+sudo cp -f build/respeakerd /usr/local/bin
+sudo cp -f scripts/respeakerd_safe /usr/local/bin
 sudo chmod a+x /usr/local/bin/respeakerd
+sudo chmod a+x /usr/local/bin/respeakerd_safe
 sudo mkdir -p /usr/local/etc/respeakerd
 sudo cp -Rf build/resources /usr/local/etc/respeakerd/
 sudo cp -f scripts/respeakerd.service /etc/systemd/system/
-
-
 
 #enable system service
 sudo systemctl enable respeakerd
