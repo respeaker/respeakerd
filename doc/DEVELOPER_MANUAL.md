@@ -149,6 +149,7 @@ Interface: "respeakerd.signal"
 
 respeakerd outputs:
 - `trigger` signal
+- `respeakerd_ready` signal
 
 respeakerd listens for:
 - `ready` signal

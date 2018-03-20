@@ -1,0 +1,13 @@
+[Unit]
+Description=AVS C++ SDK Sample App
+After=pixel_ring_service.service network.target
+
+[Service]
+User=respeaker
+Group=respeaker
+Environment="XDG_RUNTIME_DIR=/run/user/1000"
+ExecStart=/usr/local/bin/avs_cpp_sdk_safe
+
+
+[Install]
+WantedBy=multi-user.target

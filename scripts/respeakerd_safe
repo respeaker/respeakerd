@@ -1,0 +1,12 @@
+#!/bin/bash
+
+pulseaudio --check
+
+while [ $? == 1 ]; do
+    sleep 1
+    pulseaudio --check
+done
+
+sleep 5
+
+/usr/local/bin/respeakerd --snowboy_res_path="/usr/local/etc/respeakerd/resources/common.res" --snowboy_model_path="/usr/local/etc/respeakerd/resources/snowboy.umdl" --snowboy_sensitivity="0.4" --source="alsa_input.platform-sound_0.seeed-8ch"

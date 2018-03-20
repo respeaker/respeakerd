@@ -51,6 +51,7 @@ DEFINE_string(source, "default", "the source of pulseaudio");
 DEFINE_int32(agc_level, -10, "dBFS for AGC, the range is [-31, 0]");
 DEFINE_bool(debug, false, "print more message");
 DEFINE_bool(enable_wav_log, false, "enable logging audio streams into wav files for VEP and respeakerd");
+DEFINE_int32(ref_channel, 6, "the channel index of the AEC reference, 6 or 7");
 
 DEFINE_string(mode, "standard", "the mode of respeakerd, can be standard, pulse");
 DEFINE_string(fifo_file, "/tmp/music.input", "the path of the fifo file when enable pulse mode");
@@ -181,7 +182,7 @@ bool file_exist(const char* filename)
 /**
  * Connect to the DBUS bus and send a broadcast signal
  */
-void dbus_send_signal(DBusConnection *conn, int direction)
+void dbus_send_trigger_signal(DBusConnection *conn, int direction)
 {
     DBusMessage *msg;
     DBusMessageIter args;
@@ -218,6 +219,33 @@ void dbus_send_signal(DBusConnection *conn, int direction)
     dbus_message_unref(msg);
 }
 
+void dbus_send_ready_signal(DBusConnection *conn)
+{
+    DBusMessage *msg;
+    dbus_uint32_t serial = 0;
+
+    std::cout << "going to send d-bus signal: respeakerd_ready " << std::endl;
+
+    // create a signal & check for errors
+    msg = dbus_message_new_signal("/io/respeaker/respeakerd", // object name of the signal
+                                  "respeakerd.signal", // interface name of the signal
+                                  "respeakerd_ready"); // name of the signal
+    if (!msg) {
+        std::cerr << "create dbus message(signal) failed" << std::endl;
+        exit(3);
+    }
+
+    // send the message and flush the connection
+    if (!dbus_connection_send(conn, msg, &serial)) {
+        std::cerr << "sending dbus message failed" << std::endl;
+        exit(3);
+    }
+    dbus_connection_flush(conn);
+
+    // free the message
+    dbus_message_unref(msg);
+}
+
 /**
  * Pop a singal message from the dbus if there's any
  */
@@ -246,6 +274,7 @@ int main(int argc, char *argv[])
     sigaction(SIGPIPE, &sig_int_handler, NULL);
 
     std::cout << "source: " << FLAGS_source << std::endl;
+    std::cout << "ref_channel: " << FLAGS_ref_channel << std::endl;
     std::cout << "enable_wav_log: " << FLAGS_enable_wav_log << std::endl;
     std::cout << "snowboy_res_path: " << FLAGS_snowboy_res_path << std::endl;
     std::cout << "snowboy_model_path: " << FLAGS_snowboy_model_path << std::endl;
@@ -253,6 +282,11 @@ int main(int argc, char *argv[])
     std::cout << "agc_level: " << FLAGS_agc_level << std::endl;
     std::cout << "mode: " << FLAGS_mode << std::endl;
     std::cout << "fifo_file: " << FLAGS_fifo_file << std::endl;
+
+    if (!(FLAGS_ref_channel == 6 || FLAGS_ref_channel == 7)) {
+        std::cerr << "invalid ref channel index, it should be 6 or 7." << std::endl;
+        exit(1);
+    }
 
     int mode = 0; //standard
     if (FLAGS_mode == "pulse") {
@@ -266,7 +300,7 @@ int main(int argc, char *argv[])
     std::unique_ptr<ReSpeaker> respeaker;
 
     collector.reset(PulseCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
-    vep_bf.reset(VepAecBeamformingNode::Create(6, FLAGS_enable_wav_log));
+    vep_bf.reset(VepAecBeamformingNode::Create(FLAGS_ref_channel, FLAGS_enable_wav_log));
     vep_kws.reset(VepDoaKwsNode::Create(FLAGS_snowboy_res_path,
                                         FLAGS_snowboy_model_path,
                                         FLAGS_snowboy_sensitivity,
@@ -277,7 +311,7 @@ int main(int argc, char *argv[])
     vep_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
     //collector->BindToCore(0);
     //vep_bf->BindToCore(1);
-    vep_kws->BindToCore(2);
+    //vep_kws->BindToCore(2);
 
     vep_bf->Uplink(collector.get());
     vep_kws->Uplink(vep_bf.get());
@@ -436,6 +470,9 @@ int main(int argc, char *argv[])
 #endif
                 cloud_ready = true;  // we dont need to wait cloud ready for Pulse mode
                 std::cout << "assuming cloud always ready for PulseAudio mode" << std::endl;
+
+                dbus_send_ready_signal(dbus_conn);
+
                 break;
             }
 
@@ -553,7 +590,7 @@ int main(int argc, char *argv[])
             } else {
                 if (detected && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
                     dir = respeaker->GetDirection();
-                    dbus_send_signal(dbus_conn, dir);
+                    dbus_send_trigger_signal(dbus_conn, dir);
                 }
                 // pulse mode, we just write the audio data into the fifo file
                 int ret = write(fd, one_block.data(), one_block.length());
