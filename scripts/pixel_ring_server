@@ -38,7 +38,7 @@ class StateMachine(object):
     respeakerd_ready = False
 
     def on_ready(self):
-        print("===== on_ready =====\r\n")
+        print("===== on_ready =====")
         self.state = 'off'
         pixel_ring.off()
 
@@ -55,7 +55,10 @@ class StateMachine(object):
             self.on_ready()
 
     def on_detected(self, dir):
-        print('===== on_detected =====\r\nat {}`\r\n'.format(dir))
+        print('===== on_detected =====\r\n@ {}`'.format(dir))
+        if self.state in ['listening', 'thinking']:
+            print('invalid trigger, reason: listening or thinking can not be interrupted!')
+            return
         self.state = 'detected'
         self.last_dir = (dir + 360 - 60)%360
         pixel_ring.wakeup(self.last_dir)
@@ -70,17 +73,17 @@ class StateMachine(object):
         pixel_ring.listen()
 
     def on_speaking(self):
-        print("===== on_speaking =====\r\n")
+        print("===== on_speaking =====")
         self.state = 'speaking'
         pixel_ring.speak()
 
     def on_thinking(self):
-        print("===== on_thinking =====\r\n")
+        print("===== on_thinking =====")
         self.state = 'thinking'
         pixel_ring.think()
 
     def on_idle(self):
-        print("===== on_off =====\r\n")
+        print("===== on_off =====")
         self.state = 'off'
         pixel_ring.off()
         
