@@ -34,7 +34,7 @@ PULSE_SOURCE="alsa_input.platform-sound_0.seeed-8ch"
 sudo apt update
 sudo apt install -y librespeaker git cmake
 sudo apt install -y python-mraa python-upm libmraa1 libupm1 mraa-tools
-sudo pip install avs pixel_ring voice-engine pydubs
+sudo pip install avs pixel_ring voice-engine pydbus
 
 cd /home/respeaker
 git clone https://github.com/respeaker/respeakerd.git
