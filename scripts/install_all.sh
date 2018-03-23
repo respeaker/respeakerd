@@ -76,8 +76,6 @@ if [ x${IP_WLAN} != x ]; then
 fi
 echo ""
 
-# clear the input buffer
-read -d '' -t 0.1 -n 10000
 read -n1 -r -p 'Have you got the VNC desktop? Press any key to continue ...' key
 echo ""
 echo ""
