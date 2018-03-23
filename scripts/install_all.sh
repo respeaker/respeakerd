@@ -76,9 +76,6 @@ if [ x${IP_WLAN} != x ]; then
 fi
 echo ""
 
-read -n1 -r -p 'Have you got the VNC desktop? Press any key to continue ...' key
-echo ""
-echo ""
 echo "------"
 echo "Open the browser inside the VNC desktop, and go to 'http://127.0.0.1:3000'"
 echo "Login with your Amazon account and authorize Alexa service."
