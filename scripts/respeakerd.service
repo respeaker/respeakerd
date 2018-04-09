@@ -5,6 +5,8 @@ After=avahi-daemon.service network.target
 [Service]
 User=respeaker
 Group=respeaker
+LimitRTPRIO=99
+LimitRTPRIOSoft=99
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
 ExecStart=/usr/local/bin/respeakerd_safe
 

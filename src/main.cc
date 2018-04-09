@@ -312,6 +312,9 @@ int main(int argc, char *argv[])
     //collector->BindToCore(0);
     //vep_bf->BindToCore(1);
     //vep_kws->BindToCore(2);
+    collector->SetThreadPriority(1);
+    vep_bf->SetThreadPriority(50);
+    vep_kws->SetThreadPriority(99);
 
     vep_bf->Uplink(collector.get());
     vep_kws->Uplink(vep_bf.get());
