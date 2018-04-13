@@ -120,7 +120,7 @@ def main():
         global last_dir
         logging.info('detected at {}`'.format(dir))
         state = 'detected'
-        last_dir = (dir + 30)%360
+        last_dir = (dir + 300)%360
         pixel_ring.wakeup(last_dir)
         alexa.listen()
 
