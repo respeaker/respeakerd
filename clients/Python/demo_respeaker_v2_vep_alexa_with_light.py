@@ -3,6 +3,8 @@
 import os
 import time
 import logging
+import signal
+import threading
 from respeakerd_source import RespeakerdSource
 from avs.alexa import Alexa
 from pixel_ring import pixel_ring
@@ -86,11 +88,20 @@ def main():
 
     src.recursive_start()
 
-    while True:
+    is_quit = threading.Event()
+    def signal_handler(signal, frame):
+        print('Quit')
+        is_quit.set()
+
+    signal.signal(signal.SIGINT, signal_handler)
+
+    while not is_quit.is_set():
         try:
             time.sleep(1)
-        except KeyboardInterrupt:
-            break
+        except SyntaxError:
+            pass
+        except NameError:
+            pass
 
     src.recursive_stop()
 
