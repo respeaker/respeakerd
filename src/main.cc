@@ -23,12 +23,13 @@ extern "C"
 }
 
 #include <respeaker.h>
-// #include <chain_nodes/pulse_collector_node.h>
+ #include <chain_nodes/pulse_collector_node.h>
 #include <chain_nodes/alsa_collector_node.h>
 #include <chain_nodes/hybrid_node.h>
 #include <chain_nodes/vep_aec_bf_node.h>
 #include <chain_nodes/vep_doa_kws_node.h>
 
+#include "version.h"
 #include "json.hpp"
 #include "cppcodec/base64_default_rfc4648.hpp"
 #include "gflags/gflags.h"
@@ -49,10 +50,10 @@ using TimePoint = std::chrono::time_point<SteadyClock>;
 DEFINE_string(snowboy_res_path, "./resources/common.res", "the path to snowboay's resource file");
 DEFINE_string(snowboy_model_path, "./resources/alexa.umdl", "the path to snowboay's model file");
 DEFINE_string(snowboy_sensitivity, "0.5", "the sensitivity of snowboay");
-// DEFINE_string(source, "default", "the source of pulseaudio");
-DEFINE_string(source, "default", "the source of alsa");
-DEFINE_int32(analog_agc_level, -10, "dBFS for AGC, the range is [-31, 0]");
-DEFINE_int32(digital_agc_level, -3, "dBFS for digital agc, the range is [-31, 0]");
+DEFINE_string(source, "default", "the source of pulseaudio");
+//DEFINE_string(source, "default", "the source of alsa");
+//DEFINE_int32(analog_agc_level, -10, "dBFS for AGC, the range is [-31, 0]");
+DEFINE_int32(agc_level, -10, "dBFS for AGC, the range is [-31, 0]");
 DEFINE_bool(debug, false, "print more message");
 DEFINE_bool(enable_wav_log, false, "enable logging audio streams into wav files for VEP and respeakerd");
 DEFINE_int32(ref_channel, 6, "the channel index of the AEC reference, 6 or 7");
@@ -266,6 +267,7 @@ DBusMessage* dbus_pop_message(DBusConnection *conn)
 
 int main(int argc, char *argv[])
 {
+    google::SetVersionString(VERSION);
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     // signal process
@@ -283,8 +285,8 @@ int main(int argc, char *argv[])
     std::cout << "snowboy_res_path: " << FLAGS_snowboy_res_path << std::endl;
     std::cout << "snowboy_model_path: " << FLAGS_snowboy_model_path << std::endl;
     std::cout << "snowboy_sensitivity: " << FLAGS_snowboy_sensitivity << std::endl;
-    std::cout << "analog_agc_level: " << FLAGS_analog_agc_level << std::endl;
-    std::cout << "digital_agc_level: " << FLAGS_digital_agc_level << std::endl;
+    //std::cout << "analog_agc_level: " << FLAGS_analog_agc_level << std::endl;
+    std::cout << "agc_level: " << FLAGS_agc_level << std::endl;
     std::cout << "mode: " << FLAGS_mode << std::endl;
     std::cout << "fifo_file: " << FLAGS_fifo_file << std::endl;
 
@@ -299,25 +301,25 @@ int main(int argc, char *argv[])
     }
 
     // init librespeaker
-    // std::unique_ptr<PulseCollectorNode> collector;
-    std::unique_ptr<AlsaCollectorNode> collector;
-    std::unique_ptr<HybridNode> agc;
+    std::unique_ptr<PulseCollectorNode> collector;
+    //std::unique_ptr<AlsaCollectorNode> collector;
+    //std::unique_ptr<HybridNode> agc;
     std::unique_ptr<VepAecBeamformingNode> vep_bf;
     std::unique_ptr<VepDoaKwsNode> vep_kws;
     std::unique_ptr<ReSpeaker> respeaker;
 
-    // collector.reset(PulseCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
-    collector.reset(AlsaCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
-    agc.reset(HybridNode::CreateAgcOnly(FLAGS_analog_agc_level, 2));
+    collector.reset(PulseCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
+    //collector.reset(AlsaCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
+    //agc.reset(HybridNode::CreateAgcOnly(FLAGS_analog_agc_level, 2));
     vep_bf.reset(VepAecBeamformingNode::Create(FLAGS_ref_channel, FLAGS_enable_wav_log));
     vep_kws.reset(VepDoaKwsNode::Create(FLAGS_snowboy_res_path,
                                         FLAGS_snowboy_model_path,
                                         FLAGS_snowboy_sensitivity,
                                         10,
                                         true));
-    // vep_kws->DisableAutoStateTransfer();
+    vep_kws->DisableAutoStateTransfer();
     vep_kws->SetTriggerPostConfirmThresholdTime(160);
-    vep_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_digital_agc_level));
+    vep_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
     //collector->BindToCore(0);
     //vep_bf->BindToCore(1);
     //vep_kws->BindToCore(2);
@@ -325,7 +327,7 @@ int main(int argc, char *argv[])
     vep_bf->SetThreadPriority(50);
     vep_kws->SetThreadPriority(99);
 
-    agc->Uplink(collector.get());
+    //agc->Uplink(collector.get());
     vep_bf->Uplink(collector.get());
     vep_kws->Uplink(vep_bf.get());
 
@@ -531,14 +533,13 @@ int main(int argc, char *argv[])
                         if (one_line.find("ready") != std::string::npos) {
                             cloud_ready = true;
                             //std::cout << "cloud ready" << std::endl;
-                            respeaker->SetChainState(WAIT_TRIGGER_QUIETLY);
                         } else if (one_line.find("connecting") != std::string::npos) {
                             cloud_ready = false;
                             std::cout << "cloud is reconnecting..." << std::endl;
                         } else if (one_line.find("on_speak") != std::string::npos) {
                             on_speak = SteadyClock::now();
                             if (FLAGS_debug) std::cout << "on_speak..." << std::endl;
-                            respeaker->SetChainState(WAIT_TRIGGER_QUIETLY);
+                            //respeaker->SetChainState(WAIT_TRIGGER_QUIETLY);
                         }
                     }
                 } while (one_line != "");
@@ -549,14 +550,13 @@ int main(int argc, char *argv[])
                     if (msg) {
                         if (dbus_message_is_signal(msg, "respeakerd.signal", "ready")) {
                             cloud_ready = true;
-                            respeaker->SetChainState(WAIT_TRIGGER_QUIETLY);
                         } else if (dbus_message_is_signal(msg, "respeakerd.signal", "connecting")) {
                             cloud_ready = false;
                             std::cout << "cloud is reconnecting..." << std::endl;
                         } else if (dbus_message_is_signal(msg, "respeakerd.signal", "on_speak")) {
                             on_speak = SteadyClock::now();
                             if (FLAGS_debug) std::cout << "on_speak..." << std::endl;
-                            respeaker->SetChainState(WAIT_TRIGGER_QUIETLY);
+                            //respeaker->SetChainState(WAIT_TRIGGER_QUIETLY);
                         }
                         dbus_message_unref(msg);
                     } else break;
