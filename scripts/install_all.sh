@@ -32,7 +32,8 @@ PULSE_SOURCE="alsa_input.platform-sound_0.seeed-8ch"
 
 ## Install deps
 sudo apt update
-sudo apt install -y librespeaker git cmake
+sudo apt install -y --reinstall librespeaker
+sudo apt install -y git cmake
 sudo apt install -y python-mraa python-upm libmraa1 libupm1 mraa-tools
 sudo pip install avs pixel_ring voice-engine pydbus
 
