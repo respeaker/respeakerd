@@ -52,6 +52,9 @@ sudo cp -f scripts/respeakerd.service /etc/systemd/system/
 
 #enable system service
 sudo systemctl enable respeakerd
+#stop service in case user has run this script before
+sudo systemctl stop respeakerd
+#start the service
 sudo systemctl start respeakerd
 
 echo "The respeakerd services has been started."
