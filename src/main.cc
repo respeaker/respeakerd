@@ -29,6 +29,7 @@ extern "C"
 #include <chain_nodes/vep_aec_bf_node.h>
 #include <chain_nodes/vep_doa_kws_node.h>
 
+#include "version.h"
 #include "json.hpp"
 #include "cppcodec/base64_default_rfc4648.hpp"
 #include "gflags/gflags.h"
@@ -266,6 +267,7 @@ DBusMessage* dbus_pop_message(DBusConnection *conn)
 
 int main(int argc, char *argv[])
 {
+    google::SetVersionString(VERSION);
     google::ParseCommandLineFlags(&argc, &argv, true);
 
     // signal process
