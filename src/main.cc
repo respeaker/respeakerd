@@ -23,11 +23,12 @@ extern "C"
 }
 
 #include <respeaker.h>
- #include <chain_nodes/pulse_collector_node.h>
+#include <chain_nodes/pulse_collector_node.h>
 #include <chain_nodes/alsa_collector_node.h>
 #include <chain_nodes/hybrid_node.h>
 #include <chain_nodes/vep_aec_bf_node.h>
 #include <chain_nodes/vep_doa_kws_node.h>
+#include <chain_nodes/manual_doa_kws_node.h>
 
 #include "version.h"
 #include "json.hpp"
@@ -58,7 +59,7 @@ DEFINE_bool(debug, false, "print more message");
 DEFINE_bool(enable_wav_log, false, "enable logging audio streams into wav files for VEP and respeakerd");
 DEFINE_int32(ref_channel, 6, "the channel index of the AEC reference, 6 or 7");
 
-DEFINE_string(mode, "standard", "the mode of respeakerd, can be standard, pulse");
+DEFINE_string(mode, "standard", "the mode of respeakerd, can be standard, pulse, manual_with_kws, manual_without_kws");
 DEFINE_string(fifo_file, "/tmp/music.input", "the path of the fifo file when enable pulse mode");
 
 
@@ -299,6 +300,12 @@ int main(int argc, char *argv[])
     if (FLAGS_mode == "pulse") {
         mode = 1;
     }
+    else if (FLAGS_mode == "manual_without_kws") {
+        mode = 2;
+    }
+    else if (FLAGS_mode == "manual_with_kws") {
+        mode = 3;
+    }
 
     // init librespeaker
     std::unique_ptr<PulseCollectorNode> collector;
@@ -306,30 +313,65 @@ int main(int argc, char *argv[])
     //std::unique_ptr<HybridNode> agc;
     std::unique_ptr<VepAecBeamformingNode> vep_bf;
     std::unique_ptr<VepDoaKwsNode> vep_kws;
+    std::unique_ptr<ManDoaKwsNode> man_kws;
     std::unique_ptr<ReSpeaker> respeaker;
 
     collector.reset(PulseCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
     //collector.reset(AlsaCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
     //agc.reset(HybridNode::CreateAgcOnly(FLAGS_analog_agc_level, 2));
     vep_bf.reset(VepAecBeamformingNode::Create(FLAGS_ref_channel, FLAGS_enable_wav_log));
-    vep_kws.reset(VepDoaKwsNode::Create(FLAGS_snowboy_res_path,
-                                        FLAGS_snowboy_model_path,
-                                        FLAGS_snowboy_sensitivity,
-                                        10,
-                                        true));
-    vep_kws->DisableAutoStateTransfer();
-    vep_kws->SetTriggerPostConfirmThresholdTime(160);
-    vep_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
+    if (mode == 2) {
+        man_kws.reset(ManDoaKwsNode::Create(10,
+                                            true,
+                                            false));
+        man_kws->DisableAutoStateTransfer();
+        man_kws->SetTriggerPostConfirmThresholdTime(160);
+        man_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
+    }
+    else if (mode == 3) {
+        man_kws.reset(ManDoaKwsNode::Create(FLAGS_snowboy_res_path,
+                                            FLAGS_snowboy_model_path,
+                                            FLAGS_snowboy_sensitivity,
+                                            10,
+                                            true,
+                                            true,
+                                            false));
+        man_kws->DisableAutoStateTransfer();
+        man_kws->SetTriggerPostConfirmThresholdTime(160);
+        man_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
+    }
+    else {
+        vep_kws.reset(VepDoaKwsNode::Create(FLAGS_snowboy_res_path,
+                                    FLAGS_snowboy_model_path,
+                                    FLAGS_snowboy_sensitivity,
+                                    10,
+                                    true,
+                                    false));
+        vep_kws->DisableAutoStateTransfer();
+        vep_kws->SetTriggerPostConfirmThresholdTime(160);
+        vep_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
+    }
+
+
     //collector->BindToCore(0);
     //vep_bf->BindToCore(1);
     //vep_kws->BindToCore(2);
-    collector->SetThreadPriority(1);
-    vep_bf->SetThreadPriority(50);
-    vep_kws->SetThreadPriority(99);
 
     //agc->Uplink(collector.get());
     vep_bf->Uplink(collector.get());
-    vep_kws->Uplink(vep_bf.get());
+
+    collector->SetThreadPriority(1);
+    vep_bf->SetThreadPriority(50);
+
+    if (mode == 2 || mode == 3){
+        man_kws->SetThreadPriority(99);
+        man_kws->Uplink(vep_bf.get());
+    }
+    else {
+        vep_kws->SetThreadPriority(99);
+        vep_kws->Uplink(vep_bf.get());
+    }
+    
 
     if (FLAGS_debug) {
         respeaker.reset(ReSpeaker::Create(DEBUG_LOG_LEVEL));
@@ -337,9 +379,16 @@ int main(int argc, char *argv[])
         respeaker.reset(ReSpeaker::Create(INFO_LOG_LEVEL));
     }
     respeaker->RegisterChainByHead(collector.get());
-    respeaker->RegisterDirectionReporterNode(vep_kws.get());
-    respeaker->RegisterHotwordDetectionNode(vep_kws.get());
-    respeaker->RegisterOutputNode(vep_kws.get());
+    if (mode == 2 || mode == 3) {
+        respeaker->RegisterDirectionReporterNode(man_kws.get());
+        respeaker->RegisterHotwordDetectionNode(man_kws.get());
+        respeaker->RegisterOutputNode(man_kws.get());
+    }
+    else {
+        respeaker->RegisterDirectionReporterNode(vep_kws.get());
+        respeaker->RegisterHotwordDetectionNode(vep_kws.get());
+        respeaker->RegisterOutputNode(vep_kws.get());
+    }
 
     int sock, client_sock, rval, un_size, fd;
     struct sockaddr_un server, new_addr;
@@ -361,7 +410,7 @@ int main(int argc, char *argv[])
     DBusConnection *dbus_conn;
     DBusError dbus_err;
 
-    if (mode == 0) {
+    if (mode == 0 || mode == 2 || mode == 3) {
         // init the socket
         sock = socket(AF_UNIX, SOCK_STREAM, 0);
         if (sock < 0) {
@@ -420,7 +469,7 @@ int main(int argc, char *argv[])
 
 
     while(!stop){
-        if (mode == 0) {
+        if (mode == 0 || mode == 2 || mode == 3) {
             un_size = sizeof(struct sockaddr_un);
             client_sock = accept(sock, (struct sockaddr *)&new_addr, &un_size);
             if (client_sock == -1) {
@@ -452,7 +501,7 @@ int main(int argc, char *argv[])
         // wait the cloud to be ready
         while (!stop && !socket_error)
         {
-            if (mode == 0) {
+            if (mode == 0 || mode == 2 || mode == 3) {
                 // wait for the ready signal
                 bool alive = true;
                 one_line = cut_line(client_sock, alive);
@@ -519,7 +568,7 @@ int main(int argc, char *argv[])
         while (!stop && !socket_error)
         {
             // check the status or events from the client side
-            if (mode == 0) {
+            if (mode == 0 || mode == 2 || mode == 3) {
                 bool alive = true;
                 do {
                     one_line = cut_line(client_sock, alive);
@@ -540,6 +589,14 @@ int main(int argc, char *argv[])
                             on_speak = SteadyClock::now();
                             if (FLAGS_debug) std::cout << "on_speak..." << std::endl;
                             //respeaker->SetChainState(WAIT_TRIGGER_QUIETLY);
+                        } else if (one_line.find("set_direction") != std::string::npos) {
+                            // get direction degree from json and set it
+                            if (mode == 2 || mode == 3)
+                            {
+                                json line_json = json::parse(one_line);
+                                int direction = line_json.at("direction").get<int>();
+                                respeaker->SetDirection(direction);
+                            }
                         }
                     }
                 } while (one_line != "");
@@ -563,10 +620,19 @@ int main(int argc, char *argv[])
                 }
             }
 
-            if (FLAGS_debug && tick++ % 12 == 0) {
-                std::cout << "collector depth: " << collector->GetQueueDeepth() << ", vep1: " <<
-                vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
+            if (mode == 2 || mode == 3) {
+                if (FLAGS_debug && tick++ % 12 == 0) {
+                    std::cout << "collector depth: " << collector->GetQueueDeepth() << ", vep1: " <<
+                    vep_bf->GetQueueDeepth() << ", man: " << man_kws->GetQueueDeepth() << std::endl;
+                }
             }
+            else {
+                if (FLAGS_debug && tick++ % 12 == 0) {
+                    std::cout << "collector depth: " << collector->GetQueueDeepth() << ", vep1: " <<
+                    vep_bf->GetQueueDeepth() << ", vep2: " << vep_kws->GetQueueDeepth() << std::endl;
+                }
+            }
+
 
             //if have a client connected,this respeaker always detect hotword,if there are hotword,send event and audio.
             one_block = respeaker->DetectHotword(detected);
@@ -580,10 +646,12 @@ int main(int argc, char *argv[])
                 std::cout << "detected, but skipped!" << std::endl;
             }
 
-            if (mode == 0) {
+            // Even if we are at manual doa mode, we still call respeaker->GetDirection() and send the event to client when hotword detected.
+            // When mode = 2, respeaker->DetectHotword(detected) is always fault.
+            if (mode == 0 || mode == 2 || mode == 3) {
+                
                 if (detected && cloud_ready && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
                     dir = respeaker->GetDirection();
-
                     on_detected = SteadyClock::now();
 
                     // send the event to client right now
@@ -624,14 +692,14 @@ int main(int argc, char *argv[])
             sf_close(snd_file);
         }
 
-        if (mode == 0) {
+        if (mode == 0 || mode == 2 || mode == 3) {
             close(client_sock);
         } else {
             close(fd);
         }
     }
 
-    if (mode == 0) close(sock);
+    if (mode == 0 || mode == 2 || mode == 3) close(sock);
 
     return 0;
 }
