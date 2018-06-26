@@ -142,5 +142,12 @@ class RespeakerdSource(Element):
 
     def set_callback(self, callback):
         self.on_detected = callback
+    
+    def on_set_direction(self, dir):
+        if (type(dir) == int):
+            dir = dir % 360
+            self.event_queue.put({"type": "cmd", "data": "set_direction", "direction": dir})
+        else:
+            raise TypeError("direction must be an int.")
 
 

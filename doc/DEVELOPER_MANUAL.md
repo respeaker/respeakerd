@@ -44,14 +44,14 @@ $ ./respeakerd -help
 ```shell
 -agc_level (dBFS for AGC, the range is [-31, 0]) type: int32 default: -10
 -debug (print more message) type: bool default: false
--enable_wav_log (enable VEP to log its input and output into wav files) type: bool default: false
+-enable_wav_log (enable logging audio streams into wav files for VEP and respeakerd) type: bool default: false
+-fifo_file (the path of the fifo file when enable pulse mode) type: string default: "/tmp/music.input"
+-mode (the mode of respeakerd, can be standard, pulse, manual_with_kws, manual_without_kws) type: string default: "standard"
+-ref_channel (the channel index of the AEC reference, 6 or 7) type: int32 default: 6
 -snowboy_model_path (the path to snowboay's model file) type: string default: "./resources/alexa.umdl"
 -snowboy_res_path (the path to snowboay's resource file) type: string default: "./resources/common.res"
 -snowboy_sensitivity (the sensitivity of snowboay) type: string default: "0.5"
 -source (the source of pulseaudio) type: string default: "default"
--fifo_file (the path of the fifo file of PulseAudio pipe-source module when enabled pulse mode) type: string default: "/tmp/music.input", this is the default value of PulseAudio pipe-source module as well
--mode (the mode of respeakerd, can be standard, pulse) type: string default: "standard"
--ref_channel (the channel index of the AEC reference, 6 or 7) type: int32 default: 6
 ```
 
 ## 4. PulseAudio mode
@@ -77,6 +77,31 @@ $ ./respeakerd -mode=pulse -source="alsa_input.platform-sound_0.seeed-8ch" -debu
 ```
 
 Specify other options if you need. Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will get blocked. But this is not a big deal. Now let's move on to the setup of Alexa C++ SDK example App [TODO].
+
+## 5. Manual doa mode
+
+Manual doa mode is designed for the user who want to detect the speaker direction with other methods(e.g. with camera) and pick the voice audio in that direction.
+
+
+And there are 2 manual doa modes: one is `manual_with_kws` and another is `manual_without_kws`. Literally, the first mode will output a `hotword event` when the keyword is detected. And `manual_without_kws` mode only outputs audio data.
+
+### 5.1 Start respeakerd in manual doa mode
+
+```
+$ cd PROJECT-ROOT/build
+$ ./respeakerd -debug -snowboy_model_path="./resources/snowboy.umdl" -snowboy_res_path="./resources/common.res" -snowboy_sensitivity="0.5" -mode=manual_with_kws
+```
+
+### 5.2 Start test_manual_doa python client
+
+`test_manual_doa.py` is an example to show how to set direction to respeakerd. In this example, direction will be set to next 60 degree after a `hotword event`. Please refer to Appendix A for more details.
+
+```
+$ cd PROJECT-ROOT/clients/Python
+$ python test_manual_doa.py
+```
+
+
 
 ## Appendix A. Socket protocol
 
@@ -131,6 +156,20 @@ This is a command message issued from the client. Generally the client gets this
 ```
 
 This is a status message which indicates that the client has just received the speech synthesis from Alexa and will begin to play. `respeakerd` utilizes this status to enhence the algorithms. It's recommended that the client should capture this event and pass it down to `respeakerd` if you're doing your own client application.
+
+```json
+{"type": "cmd", "data": "set_direction", "direction": int number of degree[0, 359]}
+```
+
+This is a command message issued from the client.
+It only works at `manual doa mode` in respeakerd. Generally, respeakerd produces 6 audio beams from 6 microphones with Beamforming algorithm, and one of beams will be selected as output beam by the Direction Of Arrial(DOA) algorithm. At `manual doa mode`, respeakerd will not do DOA algorithm as `standard mode ` or `pulse mode`, and the output beam is fixed(default: beam0). 
+The client should send this message, when it needs to pick audio data from other direction. The following Table shows the range of degree of each beam and microphone:
+
+beam: | beam1 | beam2 | beam3 | beam4 | beam5 | beam6
+----|----|----|----|----|----|----
+microphone: | mic1 | mic2 | mic3 | mic4 | mic5  | mic6 
+degree: | 330-359, 0-29 | 30-89  | 90-149 | 150-209 | 210-269 | 270-329
+
 
 ## Appendix B. D-Bus protocol
 
