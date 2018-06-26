@@ -23,7 +23,7 @@ extern "C"
 }
 
 #include <respeaker.h>
- #include <chain_nodes/pulse_collector_node.h>
+#include <chain_nodes/pulse_collector_node.h>
 #include <chain_nodes/alsa_collector_node.h>
 #include <chain_nodes/hybrid_node.h>
 #include <chain_nodes/vep_aec_bf_node.h>
@@ -340,7 +340,7 @@ int main(int argc, char *argv[])
         man_kws->SetTriggerPostConfirmThresholdTime(160);
         man_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
     }
-    else{
+    else {
         vep_kws.reset(VepDoaKwsNode::Create(FLAGS_snowboy_res_path,
                                     FLAGS_snowboy_model_path,
                                     FLAGS_snowboy_sensitivity,
@@ -590,15 +590,12 @@ int main(int argc, char *argv[])
                             if (FLAGS_debug) std::cout << "on_speak..." << std::endl;
                             //respeaker->SetChainState(WAIT_TRIGGER_QUIETLY);
                         } else if (one_line.find("set_direction") != std::string::npos) {
-                            // get degree from json
+                            // get direction degree from json and set it
                             if (mode == 2 || mode == 3)
                             {
-                                // TODO
                                 json line_json = json::parse(one_line);
-                                int dir = line_json.at("direction").get<int>();
-                                // man_kws.SetDirection(dir);
-                                respeaker->SetDirection(dir);
-                                std::cout << "TEST set_direction:" << dir << std::endl;
+                                int direction = line_json.at("direction").get<int>();
+                                respeaker->SetDirection(direction);
                             }
                         }
                     }
@@ -649,10 +646,12 @@ int main(int argc, char *argv[])
                 std::cout << "detected, but skipped!" << std::endl;
             }
 
+            // Even if we are at manual doa mode, we still call respeaker->GetDirection() and send the event to client when hotword detected.
+            // When mode = 2, respeaker->DetectHotword(detected) is always fault.
             if (mode == 0 || mode == 2 || mode == 3) {
+                
                 if (detected && cloud_ready && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
                     dir = respeaker->GetDirection();
-
                     on_detected = SteadyClock::now();
 
                     // send the event to client right now

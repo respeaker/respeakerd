@@ -1,5 +1,10 @@
 # -*- coding: utf-8 -*-
 
+# This client is for testing manual doa mode.
+# After each wakeup, this client will set the direction to 
+# next beam. And the alexa voice service is disable.
+#
+
 import os
 import time
 import logging
@@ -10,8 +15,6 @@ from avs.alexa import Alexa
 from pixel_ring import pixel_ring
 import mraa
 
-state = 'thinking'
-last_dir = 0
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
@@ -72,13 +75,13 @@ def main():
 
     def on_detected(dir):
         global state
-        global last_dir
         logging.info('detected at {}`'.format(dir))
         state = 'detected'
-        last_dir = (last_dir + 60)%360
-        pixel_ring.wakeup(last_dir)
+        pixel_ring.wakeup(dir+300)
+        next_dir = (dir + 60)%360
         # alexa.listen()
-        src.on_set_direction(last_dir)
+        # set the direction to next beam
+        src.on_set_direction(next_dir)
 
     alexa.state_listener.on_listening = on_listening
     alexa.state_listener.on_thinking = on_thinking
@@ -102,8 +105,6 @@ def main():
         try:
             time.sleep(1)
             count += 10
-            pixel_ring.wakeup(count)
-            src.on_set_direction(count)
         except SyntaxError:
             pass
         except NameError:
