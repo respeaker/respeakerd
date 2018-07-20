@@ -19,20 +19,22 @@ pkg_check_modules(SNDFILE  REQUIRED  sndfile)
 
 pkg_check_modules(DBUS  REQUIRED  dbus-1)
 
-pkg_check_modules(LIBRESPEAKER  REQUIRED  respeaker)
+pkg_check_modules(RESPEAKER REQUIRED respeaker>=${RESPEAKER_SDK_MINOR_VERSION})
+# find_package(respeaker)
+message(STATUS "using librespeaker " ${RESPEAKER_VERSION} " at " ${RESPEAKER_LIBRARY_DIRS})
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/src
     ${PROJECT_SOURCE_DIR}/libs
     ${PROJECT_SOURCE_DIR}/libs/cppcodec
     ${PROJECT_SOURCE_DIR}/libs/gflags/include
-    ${LIBRESPEAKER_INCLUDE_DIRS}
+    ${RESPEAKER_INCLUDE_DIRS}
     ${SNDFILE_INCLUDE_DIRS}
     ${DBUS_INCLUDE_DIRS}
 )
 
 link_directories(
-    ${LIBRESPEAKER_LIBRARY_DIRS}
+    ${RESPEAKER_LIBRARY_DIRS}
     ${SNDFILE_LIBRARY_DIRS}
     ${DBUS_LIBRARY_DIRS}
 )
@@ -47,13 +49,18 @@ add_executable(respeakerd ${SRC})
 
 target_link_libraries(respeakerd
     ${LIBGFLAGS_PATH} -lpthread -lm
-    ${LIBRESPEAKER_LIBRARIES}
+    ${RESPEAKER_LIBRARIES}
     ${SNDFILE_LIBRARIES}
     ${DBUS_LIBRARIES}
 )
 
 # strip the rpath for the executable
 install(TARGETS respeakerd DESTINATION ${PROJECT_BINARY_DIR}/)
+install(TARGETS respeakerd DESTINATION bin)
+install(FILES ${PROJECT_SOURCE_DIR}/build/resources/alexa.umdl
+              ${PROJECT_SOURCE_DIR}/build/resources/common.res
+              ${PROJECT_SOURCE_DIR}/build/resources/snowboy.umdl
+        DESTINATION /etc/respeakerd/resources)
 #install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/respeaker_python_client DESTINATION bin)
 #install(FILES ${PROJECT_SOURCE_DIR}/scripts/respeakerd.service
 #              ${PROJECT_SOURCE_DIR}/scripts/respeaker_python_client.service
