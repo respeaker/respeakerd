@@ -9,6 +9,7 @@ from respeakerd_source import RespeakerdSource
 from avs.alexa import Alexa
 from pixel_ring import pixel_ring
 import mraa
+import sys
 
 
 def main():
@@ -69,14 +70,23 @@ def main():
         state = 'off'
         pixel_ring.off()
 
-    def on_detected(dir):
+    def on_detected(dir, index):
         global state
         global last_dir
-        logging.info('detected at {}`'.format(dir))
+        logging.info('detected hotword:{} at {}`'.format(index, dir))
         state = 'detected'
         last_dir = (dir + 360 - 60)%360
         pixel_ring.wakeup(last_dir)
         alexa.listen()
+
+    def on_vad():
+        # when someone is talking
+        print("."),
+        sys.stdout.flush()
+
+    def on_silence():
+        # when it is silent 
+        pass
 
     alexa.state_listener.on_listening = on_listening
     alexa.state_listener.on_thinking = on_thinking
@@ -85,6 +95,8 @@ def main():
     alexa.state_listener.on_ready = on_ready
 
     src.set_callback(on_detected)
+    src.set_vad_callback(on_vad)
+    src.set_silence_callback(on_silence)
 
     src.recursive_start()
 

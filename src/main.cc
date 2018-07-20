@@ -48,8 +48,8 @@ using TimePoint = std::chrono::time_point<SteadyClock>;
 #define WAIT_READY_TIMEOUT      30000    //millisecond
 #define SKIP_KWS_TIME_ON_SPEAK  2000     //millisecond
 
-DEFINE_string(snowboy_res_path, "./resources/common.res", "the path to snowboay's resource file");
-DEFINE_string(snowboy_model_path, "./resources/alexa.umdl", "the path to snowboay's model file");
+DEFINE_string(snowboy_res_path, "/etc/respeakerd/resources/common.res", "the path to snowboay's resource file");
+DEFINE_string(snowboy_model_path, "/etc/respeakerd/resources/alexa.umdl", "the path to snowboay's model file");
 DEFINE_string(snowboy_sensitivity, "0.5", "the sensitivity of snowboay");
 DEFINE_string(source, "default", "the source of pulseaudio");
 //DEFINE_string(source, "default", "the source of alsa");
@@ -321,8 +321,12 @@ int main(int argc, char *argv[])
     //agc.reset(HybridNode::CreateAgcOnly(FLAGS_analog_agc_level, 2));
     vep_bf.reset(VepAecBeamformingNode::Create(FLAGS_ref_channel, FLAGS_enable_wav_log));
     if (mode == 2) {
-        man_kws.reset(ManDoaKwsNode::Create(10,
+        man_kws.reset(ManDoaKwsNode::Create(FLAGS_snowboy_res_path,
+                                            FLAGS_snowboy_model_path,
+                                            FLAGS_snowboy_sensitivity,
+                                            10,
                                             true,
+                                            false,
                                             false));
         man_kws->DisableAutoStateTransfer();
         man_kws->SetTriggerPostConfirmThresholdTime(160);
@@ -380,12 +384,12 @@ int main(int argc, char *argv[])
     }
     respeaker->RegisterChainByHead(collector.get());
     if (mode == 2 || mode == 3) {
-        respeaker->RegisterDirectionReporterNode(man_kws.get());
+        respeaker->RegisterDirectionManagerNode(man_kws.get());
         respeaker->RegisterHotwordDetectionNode(man_kws.get());
         respeaker->RegisterOutputNode(man_kws.get());
     }
     else {
-        respeaker->RegisterDirectionReporterNode(vep_kws.get());
+        respeaker->RegisterDirectionManagerNode(vep_kws.get());
         respeaker->RegisterHotwordDetectionNode(vep_kws.get());
         respeaker->RegisterOutputNode(vep_kws.get());
     }
@@ -394,6 +398,9 @@ int main(int argc, char *argv[])
     struct sockaddr_un server, new_addr;
     char buf[1024];
     bool socket_error, detected, cloud_ready;
+    // support multi-hotword and vad
+    int hotword_index;
+    bool vad_status;
     int dir;
     std::string one_block, one_line;
     std::string event_pkt_str, audio_pkt_str;
@@ -635,14 +642,15 @@ int main(int argc, char *argv[])
 
 
             //if have a client connected,this respeaker always detect hotword,if there are hotword,send event and audio.
-            one_block = respeaker->DetectHotword(detected);
+            one_block = respeaker->DetectHotword(hotword_index);
+            vad_status = respeaker->GetVad();
 
             if (FLAGS_enable_wav_log) {
                 frames = one_block.length() / (sizeof(int16_t) * num_channels);
                 sf_writef_short(snd_file, (const int16_t *)(one_block.data()), frames);
             }
 
-            if (FLAGS_debug && detected && (SteadyClock::now() - on_speak) <= std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
+            if (FLAGS_debug && (hotword_index >= 1) && (SteadyClock::now() - on_speak) <= std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
                 std::cout << "detected, but skipped!" << std::endl;
             }
 
@@ -650,12 +658,12 @@ int main(int argc, char *argv[])
             // When mode = 2, respeaker->DetectHotword(detected) is always fault.
             if (mode == 0 || mode == 2 || mode == 3) {
                 
-                if (detected && cloud_ready && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
+                if ((hotword_index >= 1) && cloud_ready && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
                     dir = respeaker->GetDirection();
                     on_detected = SteadyClock::now();
 
                     // send the event to client right now
-                    json event = {{"type", "event"}, {"data", "hotword"}, {"direction", dir}};
+                    json event = {{"type", "event"}, {"data", "hotword"}, {"direction", dir}, {"index", hotword_index}};
                     event_pkt_str = event.dump();
                     event_pkt_str += "\r\n";
 
@@ -664,7 +672,7 @@ int main(int argc, char *argv[])
                     }
                 }
                 if (cloud_ready) {
-                    json audio = {{"type", "audio"}, {"data", base64::encode(one_block)}, {"direction", dir}};
+                    json audio = {{"type", "audio"}, {"data", base64::encode(one_block)}, {"direction", dir}, {"vad", vad_status}};
                     audio_pkt_str = audio.dump();
                     audio_pkt_str += "\r\n";
 
@@ -673,7 +681,7 @@ int main(int argc, char *argv[])
                     }
                 }
             } else {
-                if (detected && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
+                if ((hotword_index >= 1) && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
                     dir = respeaker->GetDirection();
                     dbus_send_trigger_signal(dbus_conn, dir);
                 }
