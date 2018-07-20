@@ -73,7 +73,7 @@ def main():
         state = 'off'
         pixel_ring.off()
 
-    def on_detected(dir):
+    def on_detected(dir, index):
         global state
         logging.info('detected at {}`'.format(dir))
         state = 'detected'

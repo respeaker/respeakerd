@@ -34,6 +34,8 @@ class RespeakerdSource(Element):
         self.client_state = ST_IDLE
         self.done = False
         self.on_detected = None
+        self.on_vad = None
+        self.on_silence = None
         self.dir = 0
         self.event_queue = queue.Queue(maxsize=1000)
         self.cloud_state = MESSAGES['connecting']
@@ -95,11 +97,17 @@ class RespeakerdSource(Element):
                     msg_data = msg['data']
                     msg_dir = msg['direction'] if 'direction' in msg else 0
                     if msg_type == 'event' and msg_data == 'hotword':
+                        msg_hotword_index = msg['index'] if 'index' in msg else 1
                         self.dir = msg_dir
                         if callable(self.on_detected):
-                            self.on_detected(self.dir)
+                            self.on_detected(self.dir, msg_hotword_index)
                     elif msg_type == 'audio':
                         # this is a chunk of audio
+                        msg_vad = msg['vad'] if 'vad' in msg else False
+                        if msg_vad and callable(self.on_vad):
+                            self.on_vad()
+                        if (not msg_vad) and callable(self.on_silence):
+                            self.on_silence()
                         decoded_data = None
                         try:
                             decoded_data = base64.b64decode(msg_data)
@@ -149,5 +157,11 @@ class RespeakerdSource(Element):
             self.event_queue.put({"type": "cmd", "data": "set_direction", "direction": dir})
         else:
             raise TypeError("direction must be an int.")
+    
+    def set_vad_callback(self, callback):
+        self.on_vad = callback
+
+    def set_silence_callback(self, callback):
+        self.on_silence = callback
 
 
