@@ -326,19 +326,19 @@ int main(int argc, char *argv[])
     collector.reset(PulseCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
     vep_1beam.reset(VepAec1BeamNode::Create(FLAGS_mic_type, 6, FLAGS_enable_wav_log));
     if (kws_mode == 0) {
-        snips_kws.reset(SnipsDoaKwsNode::Create(FLAGS_snips_model_path "/examples/C++/resources/model",
-                                            FLAGS_snips_sensitivity,
-                                            true,
-                                            false));
+        snips_kws.reset(SnipsDoaKwsNode::Create(FLAGS_snips_model_path,
+                                                FLAGS_snips_sensitivity,
+                                                true,
+                                                false));
         snips_kws->DisableAutoStateTransfer();
         snips_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
         // snips_kws->SetTriggerPostConfirmThresholdTime(160);
         // snips_kws->SetAutoDoaUpdate(true);
     }
     else if (kws_mode == 1) {
-        snowboy_kws.reset(SnowboyDoaKwsNode::Create(PROJECT_ROOT_DIR "/examples/C++/resources/common.res",
-                                                PROJECT_ROOT_DIR "/examples/C++/resources/snowboy.umdl",
-                                                "0.5"));
+        snowboy_kws.reset(SnowboyDoaKwsNode::Create(FLAGS_snowboy_res_path,
+                                                    FLAGS_snowboy_model_path,
+                                                    FLAGS_snowboy_sensitivity));
         snowboy_kws->DisableAutoStateTransfer();
         snowboy_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
         // snowboy_kws->SetTriggerPostConfirmThresholdTime(160);
@@ -392,7 +392,7 @@ int main(int argc, char *argv[])
     bool socket_error, detected, cloud_ready;
     // support multi-hotword and vad
     int hotword_index;
-    bool vad_status;
+    bool vad_status = false;
     int dir;
     std::string one_block, one_line;
     std::string event_pkt_str, audio_pkt_str;
@@ -632,7 +632,7 @@ int main(int argc, char *argv[])
 
             //if have a client connected,this respeaker always detect hotword,if there are hotword,send event and audio.
             one_block = respeaker->DetectHotword(hotword_index);
-            vad_status = respeaker->GetVad();
+            if (kws_mode == 1) vad_status = respeaker->GetVad();
 
             if (FLAGS_enable_wav_log) {
                 frames = one_block.length() / (sizeof(int16_t) * num_channels);
