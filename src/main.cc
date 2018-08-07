@@ -24,9 +24,9 @@ extern "C"
 
 #include <respeaker.h>
 #include <chain_nodes/pulse_collector_node.h>
-#include <chain_nodes/hybrid_node.h>
 #include <chain_nodes/vep_aec_1beam_node.h>
 #include <chain_nodes/snips_doa_kws_node.h>
+#include <chain_nodes/snowboy_doa_kws_node.h>
 
 
 #include "version.h"
@@ -47,22 +47,20 @@ using TimePoint = std::chrono::time_point<SteadyClock>;
 #define WAIT_READY_TIMEOUT      30000    //millisecond
 #define SKIP_KWS_TIME_ON_SPEAK  2000     //millisecond
 
-// DEFINE_string(snowboy_res_path, "/etc/respeakerd/resources/common.res", "the path to snowboay's resource file");
-// DEFINE_string(snowboy_model_path, "/etc/respeakerd/resources/alexa.umdl", "the path to snowboay's model file");
-// DEFINE_string(snowboy_sensitivity, "0.5", "the sensitivity of snowboay");
-
-DEFINE_string(snips_model_path, "/etc/respeakerd/resources/model", "the path to snips-hotword's model file");
-DEFINE_double(snips_sensitivity, 0.5, "the sensitivity of snips-hotword");
-DEFINE_string(source, "default", "the source of pulseaudio");
-//DEFINE_string(source, "default", "the source of alsa");
-//DEFINE_int32(analog_agc_level, -10, "dBFS for AGC, the range is [-31, 0]");
-DEFINE_int32(agc_level, -10, "dBFS for AGC, the range is [-31, 0]");
-DEFINE_bool(debug, false, "print more message");
-DEFINE_bool(enable_wav_log, false, "enable logging audio streams into wav files for VEP and respeakerd");
-DEFINE_int32(ref_channel, 6, "the channel index of the AEC reference, 6 or 7");
-
-DEFINE_string(mode, "standard", "the mode of respeakerd, can be standard, pulse");
-DEFINE_string(fifo_file, "/tmp/music.input", "the path of the fifo file when enable pulse mode");
+DEFINE_string(snowboy_res_path, "/etc/respeakerd/resources/common.res", "\t\t\tthe path to snowboay's resource file");
+DEFINE_string(snowboy_model_path, "/etc/respeakerd/resources/alexa.umdl", "\t\t\tthe path to snowboay's model file");
+DEFINE_string(snowboy_sensitivity, "0.5", "\t\t\tthe sensitivity of snowboay");
+DEFINE_string(snips_model_path, "/etc/respeakerd/resources/model", "\t\t\tthe path to snips-hotword's model file");
+DEFINE_double(snips_sensitivity, 0.5, "\t\t\tthe sensitivity of snips-hotword");
+DEFINE_string(source, "default", "\t\t\tthe source of pulseaudio");
+DEFINE_int32(agc_level, -3, "\t\t\tdBFS for AGC, the range is [-31, 0]");
+DEFINE_bool(debug, false, "\t\t\tprint more message");
+DEFINE_bool(enable_wav_log, false, "\t\t\tenable logging audio streams into wav files for VEP and respeakerd");
+DEFINE_int32(ref_channel, 6, "\t\t\tthe channel index of the AEC reference, 6 or 7");
+DEFINE_string(mode, "standard", "\t\t\tthe mode of respeakerd, can be standard, pulse");
+DEFINE_string(kws, "snips", "\t\t\tthe kws engine, can be snips, snowboy");
+DEFINE_string(mic_type, "CIRCULAR_6MIC_7BEAM", "\t\t\tthe type of microphone, can be CIRCULAR_6MIC_7BEAM, LINEAR_6MIC_8BEAM, LINEAR_4MIC_1BEAM")
+DEFINE_string(fifo_file, "\t\t\t/tmp/music.input", "the path of the fifo file when enable pulse mode");
 
 
 static bool stop = false;
@@ -282,19 +280,6 @@ int main(int argc, char *argv[])
     sigaction(SIGTERM, &sig_int_handler, NULL);
     sigaction(SIGPIPE, &sig_int_handler, NULL);
 
-    std::cout << "source: " << FLAGS_source << std::endl;
-    std::cout << "ref_channel: " << FLAGS_ref_channel << std::endl;
-    std::cout << "enable_wav_log: " << FLAGS_enable_wav_log << std::endl;
-    // std::cout << "snowboy_res_path: " << FLAGS_snowboy_res_path << std::endl;
-    // std::cout << "snowboy_model_path: " << FLAGS_snowboy_model_path << std::endl;
-    // std::cout << "snowboy_sensitivity: " << FLAGS_snowboy_sensitivity << std::endl;
-    std::cout << "snips_model_path: " << FLAGS_snips_model_path << std::endl;
-    std::cout << "snips_sensitivity: " << FLAGS_snips_sensitivity << std::endl;
-    //std::cout << "analog_agc_level: " << FLAGS_analog_agc_level << std::endl;
-    std::cout << "agc_level: " << FLAGS_agc_level << std::endl;
-    std::cout << "mode: " << FLAGS_mode << std::endl;
-    std::cout << "fifo_file: " << FLAGS_fifo_file << std::endl;
-
     if (!(FLAGS_ref_channel == 6 || FLAGS_ref_channel == 7)) {
         std::cerr << "invalid ref channel index, it should be 6 or 7." << std::endl;
         exit(1);
@@ -305,27 +290,92 @@ int main(int argc, char *argv[])
         mode = 1;
     }
 
+    int kws_mode = 0; // snips
+    if (FLAGS_kws == "snowboy") {
+        kws_mode = 1;
+    }
+    // else if (FLAGS_kws = "no_kws") {
+    //     kws_mode = 2;
+    // }
+
+    std::cout << "source: " << FLAGS_source << std::endl;
+    std::cout << "ref_channel: " << FLAGS_ref_channel << std::endl;
+    std::cout << "enable_wav_log: " << FLAGS_enable_wav_log << std::endl;
+    std::cout << "snowboy_res_path: " << FLAGS_snowboy_res_path << std::endl;
+    std::cout << "snowboy_model_path: " << FLAGS_snowboy_model_path << std::endl;
+    std::cout << "snowboy_sensitivity: " << FLAGS_snowboy_sensitivity << std::endl;
+    std::cout << "snips_model_path: " << FLAGS_snips_model_path << std::endl;
+    std::cout << "snips_sensitivity: " << FLAGS_snips_sensitivity << std::endl;
+    std::cout << "analog_agc_level: " << FLAGS_analog_agc_level << std::endl;
+    std::cout << "agc_level: " << FLAGS_agc_level << std::endl;
+    if (mode == 0) std::cout << "mode: standard" << std::endl;
+    else std::cout << "mode: pulse" << std::endl;
+    if (kws_mode == 0) std::cout << "kws: snips" << std::endl;
+    else if (kws_mode == 1) std::cout << "kws: snowboy" << std::endl;
+    // else std::cout << "kws: no_kws" << std::endl;
+    std::cout << "mic_type: " << FLAGS_mic_type << std::endl;
+    std::cout << "fifo_file: " << FLAGS_fifo_file << std::endl;
+
     // init librespeaker
     std::unique_ptr<PulseCollectorNode> collector;
     std::unique_ptr<VepAec1BeamNode> vep_1beam;
     std::unique_ptr<SnipsDoaKwsNode> snips_kws;
+    std::unique_ptr<SnowboyDoaKwsNode> snowboy_kws;
     std::unique_ptr<ReSpeaker> respeaker;
 
     collector.reset(PulseCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
-    vep_1beam.reset(VepAec1BeamNode::Create(LINEAR_6MIC_8BEAM, 6, FLAGS_enable_wav_log));
-    snips_kws.reset(SnipsDoaKwsNode::Create(FLAGS_snips_model_path "/examples/C++/resources/model",
+    vep_1beam.reset(VepAec1BeamNode::Create(FLAGS_mic_type, 6, FLAGS_enable_wav_log));
+    if (kws_mode == 0) {
+        snips_kws.reset(SnipsDoaKwsNode::Create(FLAGS_snips_model_path "/examples/C++/resources/model",
                                             FLAGS_snips_sensitivity,
                                             true,
                                             false));
-    snips_kws->DisableAutoStateTransfer();
-    snips_kws->SetTriggerPostConfirmThresholdTime(160);
-    snips_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
+        snips_kws->DisableAutoStateTransfer();
+        snips_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
+        // snips_kws->SetTriggerPostConfirmThresholdTime(160);
+        // snips_kws->SetAutoDoaUpdate(true);
+    }
+    else if (kws_mode == 1) {
+        snowboy_kws.reset(SnowboyDoaKwsNode::Create(PROJECT_ROOT_DIR "/examples/C++/resources/common.res",
+                                                PROJECT_ROOT_DIR "/examples/C++/resources/snowboy.umdl",
+                                                "0.5"));
+        snowboy_kws->DisableAutoStateTransfer();
+        snowboy_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
+        // snowboy_kws->SetTriggerPostConfirmThresholdTime(160);
+        // snowboy_kws->SetAutoDoaUpdate(true);
+    }
+    else {
+        // should be a not_kws_node here
+    }
+
 
     vep_1beam->Uplink(collector.get());
     collector->SetThreadPriority(1);
     vep_1beam->SetThreadPriority(50);
-    snips_kws->SetThreadPriority(99);
-    snips_kws->Uplink(vep_1beam.get());
+
+    if (kws_mode == 0) {
+        snips_kws->SetThreadPriority(99);
+        snips_kws->Uplink(vep_1beam.get());
+        respeaker->RegisterDirectionManagerNode(snips_kws.get());
+        respeaker->RegisterHotwordDetectionNode(snips_kws.get());
+        respeaker->RegisterOutputNode(snips_kws.get());
+    }
+    else if (kws_mode == 1) {
+        snowboy_kws->SetThreadPriority(99);
+        snowboy_kws->Uplink(vep_1beam.get());
+        respeaker->RegisterDirectionManagerNode(snowboy_kws.get());
+        respeaker->RegisterHotwordDetectionNode(snowboy_kws.get());
+        respeaker->RegisterOutputNode(snowboy_kws.get());
+    }
+    else if (kws_mode == 2) {
+        // no_kws->SetThreadPriority(99);
+        // no_kws->Uplink(vep_1beam.get());
+        // respeaker->RegisterDirectionManagerNode(no_kws.get());
+        // respeaker->RegisterHotwordDetectionNode(no_kws.get());
+        // respeaker->RegisterOutputNode(no_kws.get());
+        respeaker->RegisterOutputNode(vep_1beam.get());
+    }
+
     
 
     if (FLAGS_debug) {
@@ -334,10 +384,6 @@ int main(int argc, char *argv[])
         respeaker.reset(ReSpeaker::Create(INFO_LOG_LEVEL));
     }
     respeaker->RegisterChainByHead(collector.get());
-
-    respeaker->RegisterDirectionManagerNode(snips_kws.get());
-    respeaker->RegisterHotwordDetectionNode(snips_kws.get());
-    respeaker->RegisterOutputNode(snips_kws.get());
 
 
     int sock, client_sock, rval, un_size, fd;
@@ -565,13 +611,24 @@ int main(int argc, char *argv[])
                 }
             }
 
-
-            if (FLAGS_debug && tick++ % 12 == 0) {
-                std::cout << "collector depth: " << collector->GetQueueDeepth() << ", vep_1beam: " <<
-                vep_1beam->GetQueueDeepth() << ", snips: " << snips_kws->GetQueueDeepth() << std::endl;
+            if (kws_mode == 0) {
+                if (FLAGS_debug && tick++ % 12 == 0) {
+                    std::cout << "collector depth: " << collector->GetQueueDeepth() << ", vep_1beam: " <<
+                    vep_1beam->GetQueueDeepth() << ", snips: " << snips_kws->GetQueueDeepth() << std::endl;
+                }
             }
-
-
+            else if (kws_mode == 1) {
+                if (FLAGS_debug && tick++ % 12 == 0) {
+                    std::cout << "collector depth: " << collector->GetQueueDeepth() << ", vep_1beam: " <<
+                    vep_1beam->GetQueueDeepth() << ", snowboy: " << snowboy_kws->GetQueueDeepth() << std::endl;
+                }
+            }
+            // else if (kws_mode == 2) {
+            //     if (FLAGS_debug && tick++ % 12 == 0) {
+            //         std::cout << "collector depth: " << collector->GetQueueDeepth() << ", vep_1beam: " <<
+            //         vep_1beam->GetQueueDeepth() << ", no_kws: " << no_kws->GetQueueDeepth() << std::endl;
+            //     }
+            // }
 
             //if have a client connected,this respeaker always detect hotword,if there are hotword,send event and audio.
             one_block = respeaker->DetectHotword(hotword_index);
@@ -586,8 +643,6 @@ int main(int argc, char *argv[])
                 std::cout << "detected, but skipped!" << std::endl;
             }
 
-            // Even if we are at manual doa mode, we still call respeaker->GetDirection() and send the event to client when hotword detected.
-            // When mode = 2, respeaker->DetectHotword(detected) is always fault.
             if (mode == 0) {
                 
                 if ((hotword_index >= 1) && cloud_ready && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
