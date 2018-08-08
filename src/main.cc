@@ -48,7 +48,7 @@ using TimePoint = std::chrono::time_point<SteadyClock>;
 #define SKIP_KWS_TIME_ON_SPEAK  2000     //millisecond
 
 DEFINE_string(snowboy_res_path, "/etc/respeakerd/resources/common.res", "the path to snowboay's resource file");
-DEFINE_string(snowboy_model_path, "/etc/respeakerd/resources/alexa.umdl", "the path to snowboay's model file");
+DEFINE_string(snowboy_model_path, "/etc/respeakerd/resources/snowboy.umdl", "the path to snowboay's model file");
 DEFINE_string(snowboy_sensitivity, "0.5", "the sensitivity of snowboay");
 DEFINE_string(snips_model_path, "/etc/respeakerd/resources/model", "the path to snips-hotword's model file");
 DEFINE_double(snips_sensitivity, 0.5, "the sensitivity of snips-hotword");
@@ -298,8 +298,8 @@ int main(int argc, char *argv[])
     //     kws_mode = 2;
     // }
     MicType _mic_type = CIRCULAR_6MIC_7BEAM;
-        if (FLAGS_mic_type == "LINEAR_6MIC_8BEAM") _mic_type = LINEAR_6MIC_8BEAM;
-            else if (FLAGS_mic_type == "LINEAR_4MIC_1BEAM") _mic_type = LINEAR_4MIC_1BEAM;
+    if (FLAGS_mic_type == "LINEAR_6MIC_8BEAM") _mic_type = LINEAR_6MIC_8BEAM;
+    else if (FLAGS_mic_type == "LINEAR_4MIC_1BEAM") _mic_type = LINEAR_4MIC_1BEAM;
 
 
     std::cout << "source: " << FLAGS_source << std::endl;
@@ -317,7 +317,8 @@ int main(int argc, char *argv[])
     else if (kws_mode == 1) std::cout << "kws: snowboy" << std::endl;
     // else std::cout << "kws: no_kws" << std::endl;
     if (_mic_type == CIRCULAR_6MIC_7BEAM) std::cout << "mic_type: CIRCULAR_6MIC_7BEAM" << std::endl;
-    else if (_mic_type == LINEAR_6MIC_8BEAM) std::cout << "mic_type: LINEAR_6MIC_8BEAM" << std::endl;      else std::cout << "mic_type: LINEAR_4MIC_1BEAM" << std::endl;
+    else if (_mic_type == LINEAR_6MIC_8BEAM) std::cout << "mic_type: LINEAR_6MIC_8BEAM" << std::endl;      
+    else std::cout << "mic_type: LINEAR_4MIC_1BEAM" << std::endl;
     std::cout << "fifo_file: " << FLAGS_fifo_file << std::endl;
     // init librespeaker
     std::unique_ptr<PulseCollectorNode> collector;
@@ -701,3 +702,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
