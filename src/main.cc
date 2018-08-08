@@ -47,20 +47,20 @@ using TimePoint = std::chrono::time_point<SteadyClock>;
 #define WAIT_READY_TIMEOUT      30000    //millisecond
 #define SKIP_KWS_TIME_ON_SPEAK  2000     //millisecond
 
-DEFINE_string(snowboy_res_path, "/etc/respeakerd/resources/common.res", "\t\t\tthe path to snowboay's resource file");
-DEFINE_string(snowboy_model_path, "/etc/respeakerd/resources/alexa.umdl", "\t\t\tthe path to snowboay's model file");
-DEFINE_string(snowboy_sensitivity, "0.5", "\t\t\tthe sensitivity of snowboay");
-DEFINE_string(snips_model_path, "/etc/respeakerd/resources/model", "\t\t\tthe path to snips-hotword's model file");
-DEFINE_double(snips_sensitivity, 0.5, "\t\t\tthe sensitivity of snips-hotword");
-DEFINE_string(source, "default", "\t\t\tthe source of pulseaudio");
-DEFINE_int32(agc_level, -3, "\t\t\tdBFS for AGC, the range is [-31, 0]");
-DEFINE_bool(debug, false, "\t\t\tprint more message");
-DEFINE_bool(enable_wav_log, false, "\t\t\tenable logging audio streams into wav files for VEP and respeakerd");
-DEFINE_int32(ref_channel, 6, "\t\t\tthe channel index of the AEC reference, 6 or 7");
-DEFINE_string(mode, "standard", "\t\t\tthe mode of respeakerd, can be standard, pulse");
-DEFINE_string(kws, "snips", "\t\t\tthe kws engine, can be snips, snowboy");
-DEFINE_string(mic_type, "CIRCULAR_6MIC_7BEAM", "\t\t\tthe type of microphone, can be CIRCULAR_6MIC_7BEAM, LINEAR_6MIC_8BEAM, LINEAR_4MIC_1BEAM")
-DEFINE_string(fifo_file, "\t\t\t/tmp/music.input", "the path of the fifo file when enable pulse mode");
+DEFINE_string(snowboy_res_path, "/etc/respeakerd/resources/common.res", "the path to snowboay's resource file");
+DEFINE_string(snowboy_model_path, "/etc/respeakerd/resources/snowboy.umdl", "the path to snowboay's model file");
+DEFINE_string(snowboy_sensitivity, "0.5", "the sensitivity of snowboay");
+DEFINE_string(snips_model_path, "/etc/respeakerd/resources/model", "the path to snips-hotword's model file");
+DEFINE_double(snips_sensitivity, 0.5, "the sensitivity of snips-hotword");
+DEFINE_string(source, "default", "the source of pulseaudio");
+DEFINE_int32(agc_level, -3, "dBFS for AGC, the range is [-31, 0]");
+DEFINE_bool(debug, false, "print more message");
+DEFINE_bool(enable_wav_log, false, "enable logging audio streams into wav files for VEP and respeakerd");
+DEFINE_int32(ref_channel, 6, "the channel index of the AEC reference, 6 or 7");
+DEFINE_string(mode, "standard", "the mode of respeakerd, can be standard, pulse");
+DEFINE_string(kws, "snips", "the kws engine, can be snips, snowboy");
+DEFINE_string(mic_type, "CIRCULAR_6MIC_7BEAM", "the type of microphone, can be CIRCULAR_6MIC_7BEAM, LINEAR_6MIC_8BEAM, LINEAR_4MIC_1BEAM");
+DEFINE_string(fifo_file, "/tmp/music.input", "the path of the fifo file when enable pulse mode");
 
 
 static bool stop = false;
@@ -297,6 +297,10 @@ int main(int argc, char *argv[])
     // else if (FLAGS_kws = "no_kws") {
     //     kws_mode = 2;
     // }
+    MicType _mic_type = CIRCULAR_6MIC_7BEAM;
+    if (FLAGS_mic_type == "LINEAR_6MIC_8BEAM") _mic_type = LINEAR_6MIC_8BEAM;
+    else if (FLAGS_mic_type == "LINEAR_4MIC_1BEAM") _mic_type = LINEAR_4MIC_1BEAM;
+
 
     std::cout << "source: " << FLAGS_source << std::endl;
     std::cout << "ref_channel: " << FLAGS_ref_channel << std::endl;
@@ -306,25 +310,25 @@ int main(int argc, char *argv[])
     std::cout << "snowboy_sensitivity: " << FLAGS_snowboy_sensitivity << std::endl;
     std::cout << "snips_model_path: " << FLAGS_snips_model_path << std::endl;
     std::cout << "snips_sensitivity: " << FLAGS_snips_sensitivity << std::endl;
-    std::cout << "analog_agc_level: " << FLAGS_analog_agc_level << std::endl;
     std::cout << "agc_level: " << FLAGS_agc_level << std::endl;
     if (mode == 0) std::cout << "mode: standard" << std::endl;
     else std::cout << "mode: pulse" << std::endl;
     if (kws_mode == 0) std::cout << "kws: snips" << std::endl;
     else if (kws_mode == 1) std::cout << "kws: snowboy" << std::endl;
     // else std::cout << "kws: no_kws" << std::endl;
-    std::cout << "mic_type: " << FLAGS_mic_type << std::endl;
+    if (_mic_type == CIRCULAR_6MIC_7BEAM) std::cout << "mic_type: CIRCULAR_6MIC_7BEAM" << std::endl;
+    else if (_mic_type == LINEAR_6MIC_8BEAM) std::cout << "mic_type: LINEAR_6MIC_8BEAM" << std::endl;      
+    else std::cout << "mic_type: LINEAR_4MIC_1BEAM" << std::endl;
     std::cout << "fifo_file: " << FLAGS_fifo_file << std::endl;
-
     // init librespeaker
     std::unique_ptr<PulseCollectorNode> collector;
     std::unique_ptr<VepAec1BeamNode> vep_1beam;
     std::unique_ptr<SnipsDoaKwsNode> snips_kws;
     std::unique_ptr<SnowboyDoaKwsNode> snowboy_kws;
     std::unique_ptr<ReSpeaker> respeaker;
-
     collector.reset(PulseCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
-    vep_1beam.reset(VepAec1BeamNode::Create(FLAGS_mic_type, 6, FLAGS_enable_wav_log));
+    vep_1beam.reset(VepAec1BeamNode::Create(_mic_type, 6, FLAGS_enable_wav_log));
+    
     if (kws_mode == 0) {
         snips_kws.reset(SnipsDoaKwsNode::Create(FLAGS_snips_model_path,
                                                 FLAGS_snips_sensitivity,
@@ -353,9 +357,17 @@ int main(int argc, char *argv[])
     collector->SetThreadPriority(1);
     vep_1beam->SetThreadPriority(50);
 
+    if (FLAGS_debug) {
+        respeaker.reset(ReSpeaker::Create(DEBUG_LOG_LEVEL));
+    } else {
+        respeaker.reset(ReSpeaker::Create(INFO_LOG_LEVEL));
+    }
+    respeaker->RegisterChainByHead(collector.get());
+
     if (kws_mode == 0) {
         snips_kws->SetThreadPriority(99);
         snips_kws->Uplink(vep_1beam.get());
+        
         respeaker->RegisterDirectionManagerNode(snips_kws.get());
         respeaker->RegisterHotwordDetectionNode(snips_kws.get());
         respeaker->RegisterOutputNode(snips_kws.get());
@@ -377,14 +389,6 @@ int main(int argc, char *argv[])
     }
 
     
-
-    if (FLAGS_debug) {
-        respeaker.reset(ReSpeaker::Create(DEBUG_LOG_LEVEL));
-    } else {
-        respeaker.reset(ReSpeaker::Create(INFO_LOG_LEVEL));
-    }
-    respeaker->RegisterChainByHead(collector.get());
-
 
     int sock, client_sock, rval, un_size, fd;
     struct sockaddr_un server, new_addr;
@@ -698,3 +702,4 @@ int main(int argc, char *argv[])
 
     return 0;
 }
+
