@@ -61,6 +61,7 @@ DEFINE_string(mode, "standard", "the mode of respeakerd, can be standard, pulse"
 DEFINE_string(kws, "snips", "the kws engine, can be snips, snowboy");
 DEFINE_string(mic_type, "CIRCULAR_6MIC_7BEAM", "the type of microphone, can be CIRCULAR_6MIC_7BEAM, LINEAR_6MIC_8BEAM, LINEAR_4MIC_1BEAM");
 DEFINE_string(fifo_file, "/tmp/music.input", "the path of the fifo file when enable pulse mode");
+DEFINE_bool(auto_doa_update, false, "Enable auto_doa_update means the output direction is always changing, if disable, the direction only changes when hotword detected.");
 
 
 static bool stop = false;
@@ -320,6 +321,7 @@ int main(int argc, char *argv[])
     else if (_mic_type == LINEAR_6MIC_8BEAM) std::cout << "mic_type: LINEAR_6MIC_8BEAM" << std::endl;      
     else std::cout << "mic_type: LINEAR_4MIC_1BEAM" << std::endl;
     std::cout << "fifo_file: " << FLAGS_fifo_file << std::endl;
+    std::cout << "auto_doa_update: " << FLAGS_auto_doa_update << std::endl;
     // init librespeaker
     std::unique_ptr<PulseCollectorNode> collector;
     std::unique_ptr<VepAec1BeamNode> vep_1beam;
@@ -337,7 +339,7 @@ int main(int argc, char *argv[])
         snips_kws->DisableAutoStateTransfer();
         snips_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
         // snips_kws->SetTriggerPostConfirmThresholdTime(160);
-        // snips_kws->SetAutoDoaUpdate(true);
+        // snips_kws->SetAutoDoaUpdate(FLAGS_auto_doa_update);
     }
     else if (kws_mode == 1) {
         snowboy_kws.reset(SnowboyDoaKwsNode::Create(FLAGS_snowboy_res_path,
@@ -346,7 +348,7 @@ int main(int argc, char *argv[])
         snowboy_kws->DisableAutoStateTransfer();
         snowboy_kws->SetAgcTargetLevelDbfs((int)std::abs(FLAGS_agc_level));
         // snowboy_kws->SetTriggerPostConfirmThresholdTime(160);
-        // snowboy_kws->SetAutoDoaUpdate(true);
+        snowboy_kws->SetAutoDoaUpdate(FLAGS_auto_doa_update);
     }
     else {
         // should be a not_kws_node here
@@ -637,6 +639,7 @@ int main(int argc, char *argv[])
             //if have a client connected,this respeaker always detect hotword,if there are hotword,send event and audio.
             one_block = respeaker->DetectHotword(hotword_index);
             if (kws_mode == 1) vad_status = respeaker->GetVad();
+            if (FLAGS_auto_doa_update) dir = respeaker->GetDirection();
 
             if (FLAGS_enable_wav_log) {
                 frames = one_block.length() / (sizeof(int16_t) * num_channels);
@@ -650,7 +653,7 @@ int main(int argc, char *argv[])
             if (mode == 0) {
                 
                 if ((hotword_index >= 1) && cloud_ready && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
-                    dir = respeaker->GetDirection();
+                    if (!FLAGS_auto_doa_update) dir = respeaker->GetDirection();
                     on_detected = SteadyClock::now();
 
                     // send the event to client right now
@@ -673,7 +676,7 @@ int main(int argc, char *argv[])
                 }
             } else {
                 if ((hotword_index >= 1) && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
-                    dir = respeaker->GetDirection();
+                    if (!FLAGS_auto_doa_update) dir = respeaker->GetDirection();
                     dbus_send_trigger_signal(dbus_conn, dir);
                 }
                 // pulse mode, we just write the audio data into the fifo file
