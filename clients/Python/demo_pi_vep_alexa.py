@@ -6,9 +6,10 @@ import logging
 import signal
 import threading
 from respeakerd_source import RespeakerdSource
+from respeakerd_volume_ctl import VolumeCtl
 from avs.alexa import Alexa
 import sys
-
+from gpiozero import LED
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
@@ -20,7 +21,9 @@ def main():
 
     src = RespeakerdSource()
     alexa = Alexa()
-
+    ctl = VolumeCtl()
+    led = LED(12)
+    led.on()
     src.link(alexa)
 
     state = 'thinking'
@@ -56,6 +59,7 @@ def main():
         global state
         print("===== on_off =====\r\n")
         state = 'off'
+        led.on()
 
     def on_detected(dir, index):
         global state
@@ -64,6 +68,7 @@ def main():
         state = 'detected'
         last_dir = (dir + 360 - 60)%360
         alexa.listen()
+        led.off()
 
     def on_vad():
         # when someone is talking
@@ -80,6 +85,10 @@ def main():
     alexa.state_listener.on_speaking = on_speaking
     alexa.state_listener.on_finished = on_off
     alexa.state_listener.on_ready = on_ready
+   
+    alexa.Speaker.CallbackSetVolume(ctl.setVolume)
+    alexa.Speaker.CallbackGetVolume(ctl.getVolume)
+    alexa.Speaker.CallbackSetMute(ctl.setMute)
 
     src.set_callback(on_detected)
     src.set_vad_callback(on_vad)
