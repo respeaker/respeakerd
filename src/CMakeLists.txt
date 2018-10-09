@@ -57,14 +57,14 @@ target_link_libraries(respeakerd
 # strip the rpath for the executable
 install(TARGETS respeakerd DESTINATION ${PROJECT_BINARY_DIR}/)
 install(TARGETS respeakerd DESTINATION bin)
-install(FILES ${PROJECT_SOURCE_DIR}/build/resources/alexa.umdl
-              ${PROJECT_SOURCE_DIR}/build/resources/common.res
-              ${PROJECT_SOURCE_DIR}/build/resources/snowboy.umdl
-        DESTINATION /etc/respeakerd/resources)
-install(FILES ${PROJECT_SOURCE_DIR}/build/resources/model/thresholds_curve.json
-              ${PROJECT_SOURCE_DIR}/build/resources/model/model.pb
-              ${PROJECT_SOURCE_DIR}/build/resources/model/config.json
-        DESTINATION /etc/respeakerd/resources/model)
+# install(FILES ${PROJECT_SOURCE_DIR}/build/resources/alexa.umdl
+#               ${PROJECT_SOURCE_DIR}/build/resources/common.res
+#               ${PROJECT_SOURCE_DIR}/build/resources/snowboy.umdl
+#         DESTINATION /etc/respeakerd/resources)
+# install(FILES ${PROJECT_SOURCE_DIR}/build/resources/model/thresholds_curve.json
+#               ${PROJECT_SOURCE_DIR}/build/resources/model/model.pb
+#               ${PROJECT_SOURCE_DIR}/build/resources/model/config.json
+#         DESTINATION /etc/respeakerd/resources/model)
 
 #install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/respeaker_python_client DESTINATION bin)
 #install(FILES ${PROJECT_SOURCE_DIR}/scripts/respeakerd.service

@@ -47,10 +47,10 @@ using TimePoint = std::chrono::time_point<SteadyClock>;
 #define WAIT_READY_TIMEOUT      30000    //millisecond
 #define SKIP_KWS_TIME_ON_SPEAK  2000     //millisecond
 
-DEFINE_string(snowboy_res_path, "/etc/respeakerd/resources/common.res", "the path to snowboay's resource file");
-DEFINE_string(snowboy_model_path, "/etc/respeakerd/resources/snowboy.umdl", "the path to snowboay's model file");
+DEFINE_string(snowboy_res_path, "/etc/respeaker/resources/common.res", "the path to snowboay's resource file");
+DEFINE_string(snowboy_model_path, "/etc/respeaker/resources/snowboy.umdl", "the path to snowboay's model file");
 DEFINE_string(snowboy_sensitivity, "0.5", "the sensitivity of snowboay");
-DEFINE_string(snips_model_path, "/etc/respeakerd/resources/model", "the path to snips-hotword's model file");
+DEFINE_string(snips_model_path, "/etc/respeaker/resources/model", "the path to snips-hotword's model file");
 DEFINE_double(snips_sensitivity, 0.5, "the sensitivity of snips-hotword");
 DEFINE_string(source, "default", "the source of pulseaudio");
 DEFINE_int32(agc_level, -3, "dBFS for AGC, the range is [-31, 0]");
@@ -318,7 +318,7 @@ int main(int argc, char *argv[])
     else if (kws_mode == 1) std::cout << "kws: snowboy" << std::endl;
     // else std::cout << "kws: no_kws" << std::endl;
     if (_mic_type == CIRCULAR_6MIC_7BEAM) std::cout << "mic_type: CIRCULAR_6MIC_7BEAM" << std::endl;
-    else if (_mic_type == LINEAR_6MIC_8BEAM) std::cout << "mic_type: LINEAR_6MIC_8BEAM" << std::endl;      
+    else if (_mic_type == LINEAR_6MIC_8BEAM) std::cout << "mic_type: LINEAR_6MIC_8BEAM" << std::endl;
     else std::cout << "mic_type: LINEAR_4MIC_1BEAM" << std::endl;
     std::cout << "fifo_file: " << FLAGS_fifo_file << std::endl;
     std::cout << "auto_doa_update: " << FLAGS_auto_doa_update << std::endl;
@@ -330,7 +330,7 @@ int main(int argc, char *argv[])
     std::unique_ptr<ReSpeaker> respeaker;
     collector.reset(PulseCollectorNode::Create(FLAGS_source, 16000, BLOCK_SIZE_MS));
     vep_1beam.reset(VepAec1BeamNode::Create(_mic_type, 6, FLAGS_enable_wav_log));
-    
+
     if (kws_mode == 0) {
         snips_kws.reset(SnipsDoaKwsNode::Create(FLAGS_snips_model_path,
                                                 FLAGS_snips_sensitivity,
@@ -369,7 +369,7 @@ int main(int argc, char *argv[])
     if (kws_mode == 0) {
         snips_kws->SetThreadPriority(99);
         snips_kws->Uplink(vep_1beam.get());
-        
+
         respeaker->RegisterDirectionManagerNode(snips_kws.get());
         respeaker->RegisterHotwordDetectionNode(snips_kws.get());
         respeaker->RegisterOutputNode(snips_kws.get());
@@ -390,7 +390,7 @@ int main(int argc, char *argv[])
         respeaker->RegisterOutputNode(vep_1beam.get());
     }
 
-    
+
 
     int sock, client_sock, rval, un_size, fd;
     struct sockaddr_un server, new_addr;
@@ -651,7 +651,7 @@ int main(int argc, char *argv[])
             }
 
             if (mode == 0) {
-                
+
                 if ((hotword_index >= 1) && cloud_ready && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
                     if (!FLAGS_auto_doa_update) dir = respeaker->GetDirection();
                     on_detected = SteadyClock::now();

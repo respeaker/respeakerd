@@ -3,3 +3,6 @@
 - [x] add  on_ready event reporting for the success of connecting AVS, respeakerd should use this event to pause voice commands until get on_ready.
 - [x] add command line options for the parameters of respeakerd, using gflags.
 - [x] PulseAudio mode, support PulseAudio pipe-source module
+- [ ] update install_all.sh, using the new apt install mode
+- [ ] add conf file parsing
+- [ ] update systemd service files, using the new conf file
