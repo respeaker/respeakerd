@@ -1,0 +1,17 @@
+{
+    "sample_rate": 16000,
+    "frame_length_ms": 25.0,
+    "frame_shift_ms": 10.0,
+    "num_mfcc": 40,
+    "num_mel_bins": 40,
+    "mel_low_freq": 20,
+    "cepstral_lifter": 0.0,
+    "dither": 1.0,
+    "window_type": "povey",
+    "use_energy": false,
+    "energy_floor": 0.0,
+    "raw_energy": true,
+    "preemphasis_coefficient": 0.0,
+    "w_smooth": 30,
+    "w_max": 100
+}
