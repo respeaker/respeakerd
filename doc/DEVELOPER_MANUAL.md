@@ -54,6 +54,17 @@ $ ./respeakerd -help
 -source (the source of pulseaudio) type: string default: "default"
 ```
 
+respeakerd can work in multiple modes.
+
+1. Standard mode (default, or `-mode=standard`)
+    In this mode respeakerd will work as a socket server, and communicate with clients via the [socket protocol](#appendix-a-socket-protocol), audio stream and events like triggered will go through this socket, in JSON format. The socket is an UNIX Domain Socket at `/tmp/respeakerd.sock`. respeakerd will recreate this socket file every time it startup.
+
+2. PulseAudio mode (`-mode=pulse`)
+    respeakerd can stream its output into PulseAudio system in this mode. With the PulseAudio system, the processed audio stream out of respeakerd can then be dispatched to arbitrary consumer applications. To work with PulseAudio, configurations need to be done for PulseAudio, see [4. PulseAudio mode](#pulseaudio-mode). After those configurations, PulseAudio will create a fifo file `/tmp/music.input` to receive audio stream. So if you don't know how to configure PulseAudio to create the fifo file at another path, please don't change the `-fifo_file` parameter of respeakerd, just use the default.
+
+3. Manual DoA mode （`-mode=manual_with_kws` or `-mode=manual_without_kws`)
+
+    These modes are pretty much like the standard mode, respeakerd will also work as a socket server, and communicate with clients via the socket protocol, but disable the DoA functionality. The beamforming will point to the direction specified manually by users. The direction can be set by a JSON command via the socket protocol, see below for more detail.
 ## 4. PulseAudio mode
 
 ### 4.1 PulseAudio configuratin
@@ -76,16 +87,16 @@ $ cd PROJECT-ROOT/build
 $ ./respeakerd -mode=pulse -source="alsa_input.platform-sound_0.seeed-8ch" -debug -snowboy_model_path="./resources/snowboy.umdl" -snowboy_res_path="./resources/common.res" -snowboy_sensitivity="0.4"
 ```
 
-Specify other options if you need. Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will get blocked. But this is not a big deal. Now let's move on to the setup of Alexa C++ SDK example App [TODO].
+Specify other options if you need. Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will get blocked. But this is not a big deal. 
 
-## 5. Manual doa mode
+## 5. Manual DoA mode
 
-Manual doa mode is designed for the user who want to detect the speaker direction with other methods(e.g. with camera) and pick the voice audio in that direction.
+Manual DoA mode is designed for the user who want to detect the speaker direction with other methods(e.g. with camera) and pick the voice audio in that direction.
 
 
-And there are 2 manual doa modes: one is `manual_with_kws` and another is `manual_without_kws`. Literally, the first mode will output a `hotword event` when the keyword is detected. And `manual_without_kws` mode only outputs audio data.
+And there are 2 manual DoA modes: one is `manual_with_kws` and another is `manual_without_kws`. Literally, the first mode will output a `hotword event` when the keyword is detected. And `manual_without_kws` mode only outputs audio data.
 
-### 5.1 Start respeakerd in manual doa mode
+### 5.1 Start respeakerd in manual DoA mode
 
 ```
 $ cd PROJECT-ROOT/build
@@ -162,36 +173,36 @@ This is a status message which indicates that the client has just received the s
 ```
 
 This is a command message issued from the client.
-It only works at `manual doa mode` in respeakerd. Generally, respeakerd produces 6 audio beams from 6 microphones with Beamforming algorithm, and one of beams will be selected as output beam by the Direction Of Arrial(DOA) algorithm. At `manual doa mode`, respeakerd will not do DOA algorithm as `standard mode ` or `pulse mode`, and the output beam is fixed(default: beam0). 
-The client should send this message, when it needs to pick audio data from other direction. The following Table shows the range of degree of each beam and microphone:
+It only works at `manual doa mode` in respeakerd. Generally, respeakerd produces 6 audio beams from 6 microphones by the Beamforming algorithm, and one of the beams will be selected as the output beam by the DOA (Direction Of Arrial) algorithm. At `manual doa mode`, respeakerd will not do DOA algorithm as `standard mode ` or `pulse mode`, and the output beam is fixed to the one you specified (default: beam0). 
+The client should send this message, when it needs to pick audio data from a desired direction. The following table shows the range of degree of each beam and microphone:
 
 beam: | beam1 | beam2 | beam3 | beam4 | beam5 | beam6
 ----|----|----|----|----|----|----
 microphone: | mic1 | mic2 | mic3 | mic4 | mic5  | mic6 
-degree: | 330-359, 0-29 | 30-89  | 90-149 | 150-209 | 210-269 | 270-329
+degree: | 0-29 / 330-359 | 30-89  | 90-149 | 150-209 | 210-269 | 270-329
 
 
 ## Appendix B. D-Bus protocol
 
-respeakerd uses System Bus to deliver signals.
+respeakerd uses System Bus to deliver signals. This is especially usefull when it's working with the [C++ version AVS client](https://github.com/respeaker/avs-device-sdk), as the C++ version AVS client doesn't communicate with respeakerd via the socket protocol but PulseAudio instead, so it can no longer receive the critical `hotword` event from respeakerd via json through the socket protocol. It receives the events via D-Bus.
 
-Object name: "/io/respeaker/respeakerd"
+D-Bus object name: "/io/respeaker/respeakerd"
 Interface: "respeakerd.signal"
 
 respeakerd outputs:
 - `trigger` signal
 - `respeakerd_ready` signal
 
-respeakerd listens for:
-- `ready` signal
-- `connecting` signal
-- `on_speak` signal
+respeakerd listens to:
+- client `ready` signal
+- client `connecting` signal
+- client `on_speak` signal
 
-These signals will be listened by pixel_ring_server
+And the following signals will be listened by the pixel_ring_server (scripts/pixel_ring_server, which is a Python script to drive the RBG led ring on the board)
 - `on_idle` signal
 - `on_listen` signal
 - `on_think` signal
 - `on_speak` signal
 
-Except `trigger` and `respeakerd_ready`, all other signals are generated by the AVS C++ SDK sample application.
+Except `trigger` and `respeakerd_ready`, all other signals are generated by the C++ AVS client.
 

@@ -16,7 +16,15 @@ You can backup your workspace to the onboard eMMC. If your onboard eMMC isn't fo
 
 #### librespeaker
 
-librespeaker is distributed via Debian apt (stored in Seeed's repo), installation of librespeaker is as easy as the following:
+librespeaker is distributed as debian package. For ReSpeaker Core v2, the system image has already added the source address into its apt SourcesList. For Raspberry Pi, please use the following commands to add the apt source address.
+
+```shell
+$ echo "deb https://seeed-studio.github.io/pi_repo/ stretch main" | sudo tee /etc/apt/sources.list.d/seeed.list
+$ curl https://seeed-studio.github.io/pi_repo/public.key | sudo apt-key add -
+$ sudo apt update
+```
+
+The installation of librespeaker is as easy as the following:
 
 ```shell
 $ sudo apt install librespeaker
@@ -132,4 +140,8 @@ $ python demo_respeaker_v2_vep_alexa_with_light.py
 
 The hotword is `snowboy`.
 
+## Other resources
+
+- [Developer Manual](doc/DEVELOPER_MANUAL.md)
+- [Play with AVS (C++)](http://wiki.seeedstudio.com/ReSpeaker_Core_v2.0/#play-with-avs) from [WiKi](http://wiki.seeedstudio.com/ReSpeaker_Core_v2.0)
 
