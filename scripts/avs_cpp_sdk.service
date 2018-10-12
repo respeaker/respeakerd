@@ -3,7 +3,9 @@ Description=AVS C++ SDK Sample App
 After=pixel_ring_service.service network.target
 
 [Service]
+# set User=pi if you're running this on Raspberry Pi
 User=respeaker
+# set Group=pi if you're running this on Raspberry Pi
 Group=respeaker
 Environment="XDG_RUNTIME_DIR=/run/user/1000"
 ExecStart=/usr/local/bin/avs_cpp_sdk_safe
