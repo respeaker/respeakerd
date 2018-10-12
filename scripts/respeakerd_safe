@@ -1,5 +1,15 @@
 #!/bin/bash
 
+[[ $(command -v pulseaudio) ]] || {
+    echo "PulseAudio is not installed."
+    exit 1
+}
+
+echo "Check PulseAudio daemon ..."
+
+# this will trigger the auto-spawn for PulseAudio if it's not started
+pactl info > /dev/null
+
 pulseaudio --check
 
 while [ $? == 1 ]; do
@@ -9,4 +19,33 @@ done
 
 sleep 5
 
-/usr/local/bin/respeakerd --snowboy_res_path="/usr/local/etc/respeakerd/resources/common.res" --snowboy_model_path="/usr/local/etc/respeakerd/resources/snowboy.umdl" --snowboy_sensitivity="0.4" --source="alsa_input.platform-sound_0.seeed-8ch"
+echo "PulseAudio daemon up."
+
+echo "Start respeakerd ..."
+
+# detect proper source
+SOURCE=alsa_input.platform-sound_0.seeed-8ch  # this is the source on Core v2
+
+PLATFORM=pi
+if [[ $(grep -c RK3229 /proc/device-tree/model) == 1 ]] ; then
+    PLATFORM=axol
+fi
+if [[ $PLATFORM == pi ]] ; then
+    is_1a=$(i2cdetect -y  1 0x1a 0x1a | grep -c UU)
+    is_35=$(i2cdetect -y  1 0x35 0x35 | grep -c UU)
+    is_3b=$(i2cdetect -y  1 0x3b 0x3b | grep -c UU)
+
+    if [ "${is_3b}" == 1 ] && [ "${is_35}" == 0 ] ; then
+        echo "Detected seeed4micvoicec on Pi"
+        SOURCE=alsa_input.platform-soc_sound.seeed-source
+    fi
+
+    if [ "${is_3b}" == 1 ] && [ "${is_35}" == 1 ] ; then
+        echo "Detected seeed8micvoicec on Pi"
+        SOURCE=alsa_input.platform-soc_sound.seeed-8ch
+    fi
+fi
+
+echo "Will use SOURCE=${SOURCE} for respeakerd"
+
+/usr/local/bin/respeakerd --source="${SOURCE}"
