@@ -13,4 +13,4 @@ done
 
 sleep 5
 
-/home/respeaker/sdk-folder/sdk-build/SampleApp/src/SampleApp /home/respeaker/sdk-folder/sdk-build/Integration/AlexaClientSDKConfig.json debug2 disableStdin
+/home/${USER}/sdk-folder/sdk-build/SampleApp/src/SampleApp /home/${USER}/sdk-folder/sdk-build/Integration/AlexaClientSDKConfig.json debug2 disableStdin

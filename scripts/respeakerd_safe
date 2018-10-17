@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# systemd run this script with user respeaker/pi, not root
+
 [[ $(command -v pulseaudio) ]] || {
     echo "PulseAudio is not installed."
     exit 1
@@ -12,12 +14,12 @@ pactl info > /dev/null
 
 pulseaudio --check
 
-while [ $? == 1 ]; do
+while [[ $? == 1 ]] ; do
     sleep 1
     pulseaudio --check
 done
 
-sleep 5
+sleep 1
 
 echo "PulseAudio daemon up."
 
@@ -30,22 +32,45 @@ PLATFORM=pi
 if [[ $(grep -c RK3229 /proc/device-tree/model) == 1 ]] ; then
     PLATFORM=axol
 fi
-if [[ $PLATFORM == pi ]] ; then
+if [[ "${PLATFORM}" == pi ]] ; then
     is_1a=$(i2cdetect -y  1 0x1a 0x1a | grep -c UU)
     is_35=$(i2cdetect -y  1 0x35 0x35 | grep -c UU)
     is_3b=$(i2cdetect -y  1 0x3b 0x3b | grep -c UU)
 
-    if [ "${is_3b}" == 1 ] && [ "${is_35}" == 0 ] ; then
-        echo "Detected seeed4micvoicec on Pi"
+    if [[ "${is_1a}" == 1 && "${is_35}" == 0 ]] ; then
+        echo "Detected 2 mic on Pi, not supported"
+        exit 1
+    fi
+
+    if [[ "${is_3b}" == 1 && "${is_35}" == 0 ]] ; then
+        echo "Detected seeed 4mic voicecard on Pi"
         SOURCE=alsa_input.platform-soc_sound.seeed-source
     fi
 
-    if [ "${is_3b}" == 1 ] && [ "${is_35}" == 1 ] ; then
-        echo "Detected seeed8micvoicec on Pi"
+    if [[ "${is_3b}" == 1 && "${is_35}" == 1 ]] ; then
+        echo "Detected seeed 8mic voicecard on Pi"
         SOURCE=alsa_input.platform-soc_sound.seeed-8ch
     fi
 fi
 
-echo "Will use SOURCE=${SOURCE} for respeakerd"
+echo "Will use --source=${SOURCE} for respeakerd"
 
-/usr/local/bin/respeakerd --source="${SOURCE}"
+# detect `pulse` mode
+CONFIG_FILE=/etc/respeaker/respeakerd.conf
+
+PULSE_MODE=`/usr/local/bin/respeakerd --test --config=${CONFIG_FILE} | grep -c 'mode: pulse'`
+
+if [[ "${PULSE_MODE}" == 1 ]] ; then
+    echo "Work in pulse mode"
+    MODULE_LOADED=`pactl list modules | grep -c 'module-pipe-source'`
+    if [[ "${MODULE_LOADED}" == 0 ]] ; then
+        pactl load-module module-pipe-source source_name="respeakerd_output" rate=16000 channels=1
+    fi
+    pactl set-default-source respeakerd_output
+    while [[ ! -p /tmp/music.input ]] ; do
+        sleep 1
+    done
+    sleep 1
+fi
+
+/usr/local/bin/respeakerd --config=${CONFIG_FILE} --source="${SOURCE}"
