@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # This client is for testing manual doa mode.
-# After each wakeup, this client will set the direction to 
+# After each wakeup, this client will set the direction to
 # next beam. And the alexa voice service is disable.
 #
 
@@ -81,7 +81,7 @@ def main():
         next_dir = (dir + 60)%360
         # alexa.listen()
         # set the direction to next beam
-        src.on_set_direction(next_dir)
+        src.set_direction(next_dir)
 
     alexa.state_listener.on_listening = on_listening
     alexa.state_listener.on_thinking = on_thinking
@@ -100,11 +100,9 @@ def main():
 
     signal.signal(signal.SIGINT, signal_handler)
 
-    count = 0
     while not is_quit.is_set():
         try:
             time.sleep(1)
-            count += 10
         except SyntaxError:
             pass
         except NameError:
