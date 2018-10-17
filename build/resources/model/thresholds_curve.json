@@ -1,68 +1,128 @@
 [
     {
-        "threshold": 0.99997336, 
-        "recall": 0.0013297872340425532, 
-        "sensitivity": 0, 
-        "far": 0.0
+        "far": 0.0, 
+        "recall": 0.8953771289537713, 
+        "sensitivity": 0.0, 
+        "threshold": 0.563
     }, 
     {
-        "threshold": 0.48656777, 
-        "recall": 0.9295212765957447, 
+        "far": 0.0, 
+        "recall": 0.8953771289537713, 
+        "sensitivity": 0.05, 
+        "threshold": 0.563
+    }, 
+    {
+        "far": 0.0, 
+        "recall": 0.8953771289537713, 
         "sensitivity": 0.1, 
-        "far": 0.0017921146953405018
+        "threshold": 0.563
     }, 
     {
-        "threshold": 0.42605102, 
-        "recall": 0.9401595744680851, 
+        "far": 0.0, 
+        "recall": 0.8953771289537713, 
+        "sensitivity": 0.15, 
+        "threshold": 0.562
+    }, 
+    {
+        "far": 0.0, 
+        "recall": 0.8953771289537713, 
         "sensitivity": 0.2, 
-        "far": 0.002986857825567503
+        "threshold": 0.562
     }, 
     {
-        "threshold": 0.42605102, 
-        "recall": 0.9401595744680851, 
+        "far": 0.15942323551864485, 
+        "recall": 0.9610705596107056, 
+        "sensitivity": 0.25, 
+        "threshold": 0.487
+    }, 
+    {
+        "far": 0.15942323551864485, 
+        "recall": 0.9805352798053528, 
         "sensitivity": 0.3, 
-        "far": 0.002986857825567503
+        "threshold": 0.41
     }, 
     {
-        "threshold": 0.3095676, 
-        "recall": 0.9561170212765957, 
+        "far": 1.2753858841491588, 
+        "recall": 0.9951338199513382, 
+        "sensitivity": 0.35, 
+        "threshold": 0.293
+    }, 
+    {
+        "far": 1.7536555907050935, 
+        "recall": 1.0, 
         "sensitivity": 0.4, 
-        "far": 0.011350059737156512
+        "threshold": 0.272
     }, 
     {
-        "threshold": 0.2795505, 
-        "recall": 0.961436170212766, 
+        "far": 2.2319252972610277, 
+        "recall": 1.0, 
+        "sensitivity": 0.45, 
+        "threshold": 0.264
+    }, 
+    {
+        "far": 3.347887945891542, 
+        "recall": 1.0, 
         "sensitivity": 0.5, 
-        "far": 0.016129032258064516
+        "threshold": 0.236
     }, 
     {
-        "threshold": 0.2795505, 
-        "recall": 0.961436170212766, 
+        "far": 5.26096677211528, 
+        "recall": 1.0, 
+        "sensitivity": 0.55, 
+        "threshold": 0.205
+    }, 
+    {
+        "far": 7.014622362820374, 
+        "recall": 1.0, 
         "sensitivity": 0.6, 
-        "far": 0.016129032258064516
+        "threshold": 0.186
     }, 
     {
-        "threshold": 0.24352217, 
-        "recall": 0.964095744680851, 
+        "far": 12.116165899417009, 
+        "recall": 1.0, 
+        "sensitivity": 0.65, 
+        "threshold": 0.142
+    }, 
+    {
+        "far": 19.76848120431196, 
+        "recall": 1.0, 
         "sensitivity": 0.7, 
-        "far": 0.022301871764237355
+        "threshold": 0.115
     }, 
     {
-        "threshold": 0.24352217, 
-        "recall": 0.964095744680851, 
+        "far": 30.29041474854252, 
+        "recall": 1.0, 
+        "sensitivity": 0.75, 
+        "threshold": 0.099
+    }, 
+    {
+        "far": 49.89947271733584, 
+        "recall": 1.0, 
         "sensitivity": 0.8, 
-        "far": 0.022301871764237355
+        "threshold": 0.078
     }, 
     {
-        "threshold": 0.09038606, 
-        "recall": 0.9800531914893617, 
+        "far": 73.81295804513256, 
+        "recall": 1.0, 
+        "sensitivity": 0.85, 
+        "threshold": 0.064
+    }, 
+    {
+        "far": 116.37896192861075, 
+        "recall": 1.0, 
         "sensitivity": 0.9, 
-        "far": 0.13102349661489446
+        "threshold": 0.048
     }, 
     {
-        "threshold": 0.0, 
+        "far": 220.0040650157299, 
+        "recall": 1.0, 
+        "sensitivity": 0.95, 
+        "threshold": 0.03
+    }, 
+    {
+        "far": 512.8645486634805, 
         "recall": 1.0, 
         "sensitivity": 1.0, 
-        "far": 1.0
+        "threshold": 0.013
     }
 ]
