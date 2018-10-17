@@ -15,6 +15,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstdio>
+#include <thread>
 #include <chrono>
 
 extern "C"
@@ -534,7 +535,7 @@ int main(int argc, char *argv[])
     DBusConnection *dbus_conn;
     DBusError dbus_err;
 
-    if (mode == 0) {
+    if (mode == 0) {  // standard mode
         // init the socket
         sock = socket(AF_UNIX, SOCK_STREAM, 0);
         if (sock < 0) {
@@ -562,10 +563,12 @@ int main(int argc, char *argv[])
             close(sock);
             exit(1);
         }
-    } else {
-        if (!file_exist(config_fifo_file.c_str())) {
-            std::cerr << "fifo file does not exist: " << config_fifo_file << std::endl;
-            exit(2);
+    } else {  // pulse mode
+        while (!file_exist(config_fifo_file.c_str())) {
+            std::cerr << "fifo file does not exist: " << config_fifo_file << ", retry in 1 second ..." << std::endl;
+            auto delay = std::chrono::seconds(1);
+            std::this_thread::sleep_for(delay);
+            if (stop) exit(2);
         }
 
         std::cout << "get d-bus connection ..." << std::endl;
