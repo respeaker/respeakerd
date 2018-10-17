@@ -15,12 +15,15 @@ This manual shows how to compile and run this project `respeakerd`, and then int
 - json: https://github.com/nlohmann/json, header only
 - base64: https://github.com/tplgy/cppcodec, header only
 - gflags: https://gflags.github.io/gflags/, precompiled for ARM platform
-- libsndfile1-dev libasound2-dev: save PCM to wav file
+- inih: https://github.com/benhoyt/inih, source files are included
+- libsndfile1-dev libasound2-dev: save PCM to wav file, installed by librespeaker
+- libdbus-1-dev: required by main.cc
 - cmake
 - librespeaker
 
 ```shell
-$ sudo apt install -y librespeaker cmake
+$ sudo apt install -y cmake libdbus-1-dev
+$ sudo apt install -y --reinstall librespeaker
 ```
 
 ### 2.2 Compile
@@ -62,9 +65,10 @@ respeakerd can work in multiple modes.
 2. PulseAudio mode (`-mode=pulse`)
     respeakerd can stream its output into PulseAudio system in this mode. With the PulseAudio system, the processed audio stream out of respeakerd can then be dispatched to arbitrary consumer applications. To work with PulseAudio, configurations need to be done for PulseAudio, see [4. PulseAudio mode](#pulseaudio-mode). After those configurations, PulseAudio will create a fifo file `/tmp/music.input` to receive audio stream. So if you don't know how to configure PulseAudio to create the fifo file at another path, please don't change the `-fifo_file` parameter of respeakerd, just use the default.
 
-3. Manual DoA mode （`-mode=manual_with_kws` or `-mode=manual_without_kws`)
+<!--3. Manual DoA mode （`-mode=manual_with_kws` or `-mode=manual_without_kws`)
 
-    These modes are pretty much like the standard mode, respeakerd will also work as a socket server, and communicate with clients via the socket protocol, but disable the DoA functionality. The beamforming will point to the direction specified manually by users. The direction can be set by a JSON command via the socket protocol, see below for more detail.
+    These modes are pretty much like the standard mode, respeakerd will also work as a socket server, and communicate with clients via the socket protocol, but disable the DoA functionality. The beamforming will point to the direction specified manually by users. The direction can be set by a JSON command via the socket protocol, see below for more detail.-->
+
 ## 4. PulseAudio mode
 
 ### 4.1 PulseAudio configuratin
@@ -87,9 +91,9 @@ $ cd PROJECT-ROOT/build
 $ ./respeakerd -mode=pulse -source="alsa_input.platform-sound_0.seeed-8ch" -debug -snowboy_model_path="./resources/snowboy.umdl" -snowboy_res_path="./resources/common.res" -snowboy_sensitivity="0.4"
 ```
 
-Specify other options if you need. Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will get blocked. But this is not a big deal. 
+Specify other options if you need. Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will get blocked. But this is not a big deal.
 
-## 5. Manual DoA mode
+<!--## 5. Manual DoA mode
 
 Manual DoA mode is designed for the user who want to detect the speaker direction with other methods(e.g. with camera) and pick the voice audio in that direction.
 
@@ -111,7 +115,7 @@ $ ./respeakerd -debug -snowboy_model_path="./resources/snowboy.umdl" -snowboy_re
 $ cd PROJECT-ROOT/clients/Python
 $ python test_manual_doa.py
 ```
-
+-->
 
 
 ## Appendix A. Socket protocol
@@ -168,19 +172,19 @@ This is a command message issued from the client. Generally the client gets this
 
 This is a status message which indicates that the client has just received the speech synthesis from Alexa and will begin to play. `respeakerd` utilizes this status to enhence the algorithms. It's recommended that the client should capture this event and pass it down to `respeakerd` if you're doing your own client application.
 
-```json
+<!--```json
 {"type": "cmd", "data": "set_direction", "direction": int number of degree[0, 359]}
 ```
 
 This is a command message issued from the client.
-It only works at `manual doa mode` in respeakerd. Generally, respeakerd produces 6 audio beams from 6 microphones by the Beamforming algorithm, and one of the beams will be selected as the output beam by the DOA (Direction Of Arrial) algorithm. At `manual doa mode`, respeakerd will not do DOA algorithm as `standard mode ` or `pulse mode`, and the output beam is fixed to the one you specified (default: beam0). 
+It only works at `manual doa mode` in respeakerd. Generally, respeakerd produces 6 audio beams from 6 microphones by the Beamforming algorithm, and one of the beams will be selected as the output beam by the DOA (Direction Of Arrial) algorithm. At `manual doa mode`, respeakerd will not do DOA algorithm as `standard mode ` or `pulse mode`, and the output beam is fixed to the one you specified (default: beam0).
 The client should send this message, when it needs to pick audio data from a desired direction. The following table shows the range of degree of each beam and microphone:
 
 beam: | beam1 | beam2 | beam3 | beam4 | beam5 | beam6
 ----|----|----|----|----|----|----
-microphone: | mic1 | mic2 | mic3 | mic4 | mic5  | mic6 
+microphone: | mic1 | mic2 | mic3 | mic4 | mic5  | mic6
 degree: | 0-29 / 330-359 | 30-89  | 90-149 | 150-209 | 210-269 | 270-329
-
+-->
 
 ## Appendix B. D-Bus protocol
 

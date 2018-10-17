@@ -2,11 +2,11 @@
 
 respeakerd is the server application for the microphone array solutions of SEEED, based on librespeaker which combines the audio front-end processing algorithms.
 
-## How to run
+## 1. Installation
 
-### 1. Preparations
+### 1.1 Prerequisites
 
-#### System upgrade
+**(1) ReSpeaker Core v2**
 
 The system running on ReSpeaker v2 should be upgraded to version `20180107` or later, as from that version on, many fixes for PulseAudio configuration has been applied.
 
@@ -14,9 +14,11 @@ OneDrive download link: <a href="https://bfaceafsieduau-my.sharepoint.com/person
 
 You can backup your workspace to the onboard eMMC. If your onboard eMMC isn't formated, format it via `fdisk` and mount it.
 
-#### librespeaker
+**(2) Raspberry Pi**
 
-librespeaker is distributed as debian package. For ReSpeaker Core v2, the system image has already added the source address into its apt SourcesList. For Raspberry Pi, please use the following commands to add the apt source address.
+raspbian stretch is recommended. You need to install the driver for ReSpeaker Pi Hats, please refer [here](https://github.com/respeaker/seeed-voicecard).
+
+Also you need to add the apt repository of Seeed.
 
 ```shell
 $ echo "deb https://seeed-studio.github.io/pi_repo/ stretch main" | sudo tee /etc/apt/sources.list.d/seeed.list
@@ -24,23 +26,62 @@ $ curl https://seeed-studio.github.io/pi_repo/public.key | sudo apt-key add -
 $ sudo apt update
 ```
 
-The installation of librespeaker is as easy as the following:
+### 1.2 Installation
+
+ssh to the board, then execute
 
 ```shell
-$ sudo apt install librespeaker
+curl https://raw.githubusercontent.com/respeaker/respeakerd/master/scripts/install_all.sh|bash
 ```
 
-To know more about librespeaker, please go to the documentation: http://respeaker.io/librespeaker_doc
+This script will install all the dependencies, and set the microphone array type in `/etc/respeaker/respeakerd.conf` as your selection. The Alexa authorization is needed by the Python client of respeakerd.
 
-#### Audio configurations
 
-Though all the configurations are properly done within the system image, you're recommended to double check the configurations of your system, especially when you've changed something from the default.
 
-First, ALSA configurations:
+## 2. Run
 
-a. Make sure there's no self-defined asound.conf in `/etc/asound.conf`.
+### 2.1 Run `respeakerd`
 
-b. Check the volume settings for the playback and cpature devices:
+In the above step 1.2, a systemd service `respeakerd` will be installed and started. If everything's right, the `respeakerd` should be running now. You can inspect the status of the respeakerd service with
+
+```shell
+sudo journalctl -f -u respeakerd
+```
+
+### 2.2 Run clients
+
+We have implemented a Python client for `respeakerd`, this client is also an AVS client. Since all the Python dependencies are already installed by the script in step 1.2, you can simply run the client with
+
+```shell
+python ~/respeakerd/clients/Python/demo_respeaker_v2_vep_alexa_with_light.py
+```
+
+And speak `snowboy` to trigger the conversation with Alexa.
+
+We have also modified the official AVS Device SDK (C++) to work with `respeakerd` - https://github.com/respeaker/avs-device-sdk. We will have a separated [guide](doc/AVS_DEVICE_SDK.md) on this.
+
+
+
+## 3. Troubleshooting Tips
+
+### 3.1 Under the hood
+
+The following image shows the software stack, and the audio flow. Understanding this will be helpfull to your debugging.
+
+![](https://user-images.githubusercontent.com/5130185/46943198-baf91c00-d0a1-11e8-8958-285771fa15fa.png)
+
+
+### 3.2 ASLA configurations
+
+**(a)** If you ever touched `/etc/asound.conf` and did some mofidications there, you're recommended to restore this file to its default.
+
+For ReSpeaker Core v2, there's no `/etc/asound.conf` by default.
+
+For Raspberry Pi, the [seeed-voicecard](https://github.com/respeaker/seeed-voicecard) installation script will install a systemd service which restores `/etc/asound.conf` to its default every boot up. Please make sure you've not disabled the `seeed-voicecard` service.
+
+**(b)** Check the volume settings for the playback and cpature devices
+
+For ReSpeaker Core v2, if you want to restore the ALSA volume to its default, do as the following
 
 ```shell
 $ sudo alsamixer
@@ -48,7 +89,7 @@ $ sudo alsamixer
 
 Tune it like this
 
-![](https://gitlab.com/seeedstudio/respeakerd/uploads/e9ea93446962f8e524ebc54408a83f96/image.png)
+![](https://user-images.githubusercontent.com/5130185/47064878-a8065900-d213-11e8-9bc8-ba2d9a59f91d.png)
 
 Then save the configuration permanetly.
 
@@ -56,25 +97,26 @@ Then save the configuration permanetly.
 $ sudo alsactl store
 ```
 
-After this, check the PulseAudio configurations of your system.
+For Raspberry Pi, the same thing as `/etc/asound.conf` will happen. The `seeed-voicecard` service will restore the mixer configuration every boot, with the configuration file at the following path as the original.
 
-c. Make sure there's no self-defined client.conf in `~/.config/pulse/`. You may simply delete the directory:
+- /etc/voicecard/ac108_asound.state - ReSpeaker 4 Mic Array for Raspberry Pi
+- /etc/voicecard/ac108_6mic.state - ReSpeaker Linear 4 Mic Array for Raspberry Pi, ReSpeaker 6 Mic Array for Raspberry Pi
 
-```shell
-$ rm -rf ~/.config/pulse
-```
+> Please note that, if you want to change our default volume configuration, any `alsamixer` `alsactl` operation will be overwritten when the system boots up next time. You need to do as the following.
+>
+> Tune the volume with alsamixer -> Save the mixer configuration to state file via `alsactl store` -> `cp /var/lib/alsa/asound.state /etc/voicecard/ac108_asound.state` if you're using ReSpeaker 4 Mic Array for Raspberry Pi, `cp /var/lib/alsa/asound.state /etc/voicecard/ac108_6mic.state` if you're using ReSpeaker Linear 4 Mic Array for Raspberry Pi, ReSpeaker 6 Mic Array for Raspberry Pi.
 
-d. Make sure that `udev-detect` module is enabled:
+### 3.3 PulseAudio configuration
+
+`respeakerd` depends on PulseAudio system. For ReSpeaker Core v2, PulseAudio will be installed by default. For Raspberry Pi, PulseAudio will be installed as a dependence of `respeakerd` when you install `respeakerd` with `apt-get`. PulseAudio will detect the microhpne array codec with the `udev` mechanism. So if you ever touched the configuration of PulseAudio and disabled the `udev` module, please remember to enable it. You can check if `udev` is enabled in your PulseAudio configuration with
 
 ```shell
 $ pactl list modules|grep -n3 udev
 ```
 
-If you see the following printings, it is loaded.
+If you can find the following text in the output, `udev` is enabled.
 
 ```shell
-42-
-43-
 44-Module #5
 45:    	Name: module-udev-detect
 46-    	Argument:
@@ -82,66 +124,21 @@ If you see the following printings, it is loaded.
 48-    	Properties:
 ```
 
-e. Make sure there's no manually added ALSA devices in `/etc/pulse/default.pa`. All the sound devices should be discovered by the udev-detect module. If you have never touched this file, ignore this step.
-
-Now restart PulseAudio with:
+If you run
 
 ```shell
-$ pulseaudio -k
+$ pactl list sources
 ```
 
-This command kills the PulseAudio daemon, but PulseAudio will auto-spawn itself. Now connect to the GUI of the system via VNC, try recording with `Audacity`. If you have no problem in recording and playing, the preparations are done.
+You will be able to find a source with name
+
+- alsa_input.platform-sound_0.seeed-8ch - ReSpeaker Core v2
+- alsa_input.platform-soc_sound.seeed-source - ReSpeaker 4 Mic Array for Raspberry Pi
+- alsa_input.platform-soc_sound.seeed-8ch - ReSpeaker Linear 4 Mic Array for Raspberry Pi, ReSpeaker 6 Mic Array for Raspberry Pi
 
 
-### 2. Run respeakerd
-
-```shell
-$ cd ~
-$ git clone https://github.com/respeaker/respeakerd.git
-$ cd respeakerd/build
-$ chmod a+x respeakerd
-$ ./respeakerd -debug -snowboy_model_path="./resources/snowboy.umdl" -snowboy_res_path="./resources/common.res" -snowboy_sensitivity="0.4"
-```
-
-The program will pause on the printings like:
-
-```shell
-From        vep_amix_init() for    (complex_t*)vobj->amix->out[i] allocated  1024 bytes, flags VCP_MEM_AMIX        , reg:  0, total: 2048
-From        vep_amix_init() for    (complex_t*)vobj->amix->out[i] allocated  1024 bytes, flags VCP_MEM_AMIX        , reg:  0, total: 1024
-From        vep_amix_init() for    (complex_t*)vobj->amix->out[i] allocated  1024 bytes, flags VCP_MEM_AMIX        , reg:  0, total: 0
-```
-
-That's OK, let's go ahead to the setup of the Python client. 
-
-Note: If you're having any issues running this application, try to re-compile it with the [instructions here](doc/DEVELOPER_MANUAL.md#2-how-to-compile).
-
-### 3. Run Python client
-
-Open another terminal.
-
-```shell
-$ cd ~/respeakerd/clients/Python
-$ sudo pip install avs pixel_ring voice-engine
-$ sudo apt install  python-mraa python-upm libmraa1 libupm1 mraa-tools
-```
-
-Authorize Alexa with your Amazon account:
-```shell
-$ alexa-auth
-```
-
-Now connect to the GUI desktop of the ReSpeaker's system via VNC, open the builtin browser, visit http://127.0.0.1:3000, do the OAuth.
-
-Run the demo now:
-
-```shell
-$ python demo_respeaker_v2_vep_alexa_with_light.py
-```
-
-The hotword is `snowboy`.
 
 ## Other resources
 
-- [Developer Manual](doc/DEVELOPER_MANUAL.md)
-- [Play with AVS (C++)](http://wiki.seeedstudio.com/ReSpeaker_Core_v2.0/#play-with-avs) from [WiKi](http://wiki.seeedstudio.com/ReSpeaker_Core_v2.0)
+- [Developer Manual](doc/DEVELOPER_MANUAL.md) - More technical details
 
