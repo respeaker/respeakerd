@@ -4,7 +4,7 @@ This guide will show you how to run the Amazon official AVS Device SDK (C++) wit
 
 ## 1. Prerequisites
 
-Please finish [README - 1. Installation](README.md#1-installation) if you haven't.
+Please finish [README - 1. Installation](/README.md#1-installation) if you haven't.
 
 ## 2. Configure respeakerd
 
@@ -59,15 +59,6 @@ $ ~/sdk-folder/sdk-build/SampleApp/src/SampleApp ~/sdk-folder/sdk-build/Integrat
 Now you are able to make conversations with Alexa, but all user experiences are done through the command line messages.
 
 ## 4. LED Ring Light Effect
-
-Here we need some scripts hosted in the Git repo of `respeakerd`, let's just checkout the repo.
-
-```shell
-$ cd ~
-$ git clone https://github.com/respeaker/respeakerd.git
-```
-
-And then tap the commands below.
 
 ```shell
 $ sudo cp -f ~/respeakerd/scripts/pixel_ring_server /usr/local/bin/
