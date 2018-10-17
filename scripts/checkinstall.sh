@@ -30,7 +30,7 @@ checkinstall \
     --pkgversion="$version" \
     --pkgrelease="build$d" \
     --pkgname=respeakerd \
-    --requires="python-mraa,python-upm,libmraa1,libupm1,mraa-tools,pulseaudio,libdbus-1-3,librespeaker \(\>= ${version_librespeaker}\)" \
+    --requires="python-mraa,python-upm,libmraa1,libupm1,mraa-tools,libdbus-1-3,pulseaudio,mpg123,mpv,gstreamer1.0-plugins-good,gstreamer1.0-plugins-bad,gstreamer1.0-plugins-ugly,gir1.2-gstreamer-1.0,python-gi,python-gst-1.0,python-pyaudio,librespeaker \(\>= ${version_librespeaker}\)" \
     --exclude=/home \
     make install
 
