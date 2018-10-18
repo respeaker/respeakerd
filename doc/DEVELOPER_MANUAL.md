@@ -35,26 +35,35 @@ $ make
 $ cp src/respeakerd . && chmod a+x ./respeakerd
 ```
 
-## 3. Command line parameters
+## 3. Parameters
 
-The command line parameters may change during the development of this project. To get the updated information of the command line paramenters, please
+### 3.1 Command line parameters
+
+The command line parameters may change during the development of this project. To get the updated information of the command line paramenters, please inspect the options with
 
 ```shell
 $ cd PROJECT-ROOT/build
 $ ./respeakerd -help
 ```
 
-```shell
--agc_level (dBFS for AGC, the range is [-31, 0]) type: int32 default: -10
+```text
+-agc_level (dBFS for AGC, the range is [-31, 0]) type: int32 default: -3
+-config (the path of the configuration file) type: string default: "/etc/respeaker/respeakerd.conf"
 -debug (print more message) type: bool default: false
+-dynamic_doa (if enabled, the DoA direction will dynamically track the sound, otherwise it only changes when hotword detected) type: bool default: false
 -enable_wav_log (enable logging audio streams into wav files for VEP and respeakerd) type: bool default: false
 -fifo_file (the path of the fifo file when enable pulse mode) type: string default: "/tmp/music.input"
--mode (the mode of respeakerd, can be standard, pulse, manual_with_kws, manual_without_kws) type: string default: "standard"
+-hotword_engine (the hotword engine, can be snips, snowboy) type: string default: "snowboy"
+-mic_type (the type of microphone array, can be CIRCULAR_6MIC, CIRCULAR_4MIC) type: string default: "CIRCULAR_6MIC"
+-mode (the mode of respeakerd, can be standard, pulse) type: string default: "standard"
 -ref_channel (the channel index of the AEC reference, 6 or 7) type: int32 default: 6
--snowboy_model_path (the path to snowboay's model file) type: string default: "./resources/alexa.umdl"
--snowboy_res_path (the path to snowboay's resource file) type: string default: "./resources/common.res"
+-snips_model_path (the path to snips-hotword's model file) type: string default: "/usr/share/respeaker/snips/model"
+-snips_sensitivity (the sensitivity of snips-hotword) type: double default: 0.5
+-snowboy_model_path (the path to snowboay's model file) type: string default: "/usr/share/respeaker/snowboy/resources/snowboy.umdl"
+-snowboy_res_path (the path to snowboay's resource file) type: string default: "/usr/share/respeaker/snowboy/resources/common.res"
 -snowboy_sensitivity (the sensitivity of snowboay) type: string default: "0.5"
 -source (the source of pulseaudio) type: string default: "default"
+-test (test the configuration file) type: bool default: false
 ```
 
 respeakerd can work in multiple modes.
@@ -69,9 +78,24 @@ respeakerd can work in multiple modes.
 
     These modes are pretty much like the standard mode, respeakerd will also work as a socket server, and communicate with clients via the socket protocol, but disable the DoA functionality. The beamforming will point to the direction specified manually by users. The direction can be set by a JSON command via the socket protocol, see below for more detail.-->
 
+### 3.2 Configuration file
+
+All the command line options (except --test and --config) will be reflected in the configuration file. The default location of the configuration file is `/etc/respeaker/respeakerd.conf`.
+
+The configurations in the file have lower priority, that is, if you specify the same option both in command line and the configuration file, `respeakerd` will take the value from command line.
+
 ## 4. PulseAudio mode
 
 ### 4.1 PulseAudio configuratin
+
+We need PulseAudio's `module-pipe-source` module to be loaded. This is handled in `scripts/respeakerd_safe`, it will detect if users have configured `respeakerd` to work as `pulse`mode, and will load the module automatically. When we're doing development, we might hope to load the module manually.
+
+```shell
+pactl load-module module-pipe-source source_name="respeakerd_output" rate=16000 channels=1
+pactl set-default-source respeakerd_output
+```
+
+Or just put this into PulseAudio's configuration file. 
 
 ```shell
 $ sudo vim /etc/pulse/default.pa
@@ -86,12 +110,15 @@ set-default-source respeakerd_output
 
 ### 4.2 Start `respeakerd` in PulseAudio mode
 
+When we're doing development, we might want to start `respeakerd` in `pulse` mode manually.
+
 ```
 $ cd PROJECT-ROOT/build
-$ ./respeakerd -mode=pulse -source="alsa_input.platform-sound_0.seeed-8ch" -debug -snowboy_model_path="./resources/snowboy.umdl" -snowboy_res_path="./resources/common.res" -snowboy_sensitivity="0.4"
+$ ./respeakerd --mode=pulse --source="alsa_input.platform-sound_0.seeed-8ch" --debug
 ```
 
-Specify other options if you need. Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will get blocked. But this is not a big deal.
+Add other options if you need. 
+> Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will seem like get stuck. This is normal because writing to a Linux pipe will be blocked if there's no consumer at the other end of this pipe. Everything will be working if you start to read the pipe, e.g. `parecord -d respeakerd_output dump.wav`.
 
 <!--## 5. Manual DoA mode
 
@@ -210,3 +237,5 @@ And the following signals will be listened by the pixel_ring_server (scripts/pix
 
 Except `trigger` and `respeakerd_ready`, all other signals are generated by the C++ AVS client.
 
+
+```
