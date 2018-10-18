@@ -3,8 +3,11 @@ Description=Pixel Ring Server
 After=respeakerd.service network.target
 
 [Service]
-ExecStart=/usr/local/bin/pixel_ring_server
+# set User=pi if you're running this on Raspberry Pi
 User=respeaker
+# set Group=pi if you're running this on Raspberry Pi
+Group=respeaker
+ExecStart=/usr/local/bin/pixel_ring_server
 
 
 [Install]
