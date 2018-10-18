@@ -4,10 +4,8 @@ message(STATUS "Project: respeakerd")
 message(STATUS "Project Directory: ${PROJECT_SOURCE_DIR}")
 
 SET(RESPEAKERD_VERSION 1.2.0)
-# checkinstall will extract `RESPEAKER_SDK_VERSION` here as dependency
-SET(RESPEAKER_SDK_VERSION 2.1.0)
-SET(RESPEAKER_SDK_SOVERSION 2)
-SET(RESPEAKER_SDK_MINOR_VERSION 2.1)
+# checkinstall will extract `MIN_RESPEAKER_SDK_VERSION` here as dependency
+SET(MIN_RESPEAKER_SDK_VERSION 2.1.0)
 
 # the RPATH to be used when installing
 SET(CMAKE_INSTALL_RPATH "")

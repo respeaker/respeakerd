@@ -19,7 +19,7 @@ pkg_check_modules(SNDFILE  REQUIRED  sndfile)
 
 pkg_check_modules(DBUS  REQUIRED  dbus-1)
 
-pkg_check_modules(RESPEAKER REQUIRED respeaker>=${RESPEAKER_SDK_MINOR_VERSION})
+pkg_check_modules(RESPEAKER REQUIRED respeaker>=${MIN_RESPEAKER_SDK_VERSION})
 # find_package(respeaker)
 message(STATUS "using librespeaker " ${RESPEAKER_VERSION} " at " ${RESPEAKER_LIBRARY_DIRS})
 
