@@ -1,6 +1,6 @@
 message("== src/CMakeLists.txt")
 
-INCLUDE(FindPkgConfig)
+include(FindPkgConfig)
 
 set(GFLAGS_PATH ${PROJECT_SOURCE_DIR}/libs/gflags/lib/ubuntu64)
 
@@ -19,9 +19,8 @@ pkg_check_modules(SNDFILE  REQUIRED  sndfile)
 
 pkg_check_modules(DBUS  REQUIRED  dbus-1)
 
-pkg_check_modules(RESPEAKER REQUIRED respeaker>=${MIN_RESPEAKER_SDK_VERSION})
-# find_package(respeaker)
-message(STATUS "using librespeaker " ${RESPEAKER_VERSION} " at " ${RESPEAKER_LIBRARY_DIRS})
+pkg_check_modules(RESPEAKER REQUIRED respeaker>=${MIN_LIBRESPEAKER_VERSION})
+message(STATUS "found librespeaker " ${RESPEAKER_VERSION} " at " ${RESPEAKER_LIBDIR})
 
 include_directories(
     ${PROJECT_SOURCE_DIR}/src
@@ -39,11 +38,11 @@ link_directories(
     ${DBUS_LIBRARY_DIRS}
 )
 
-add_definitions(-DRESPEAKERD_VERSION="${RESPEAKERD_VERSION}")
+add_definitions(-DRESPEAKERD_VERSION="${PROJECT_VERSION}")
 
 set(CMAKE_CXX_FLAGS "-fPIC -std=c++11 -fpermissive")
 
-SET(SRC
+set(SRC
     ini/ini.c
     ini/INIReader.cpp
     main.cc
@@ -58,8 +57,6 @@ target_link_libraries(respeakerd
     ${DBUS_LIBRARIES}
 )
 
-# strip the rpath for the executable
-install(TARGETS respeakerd DESTINATION ${PROJECT_BINARY_DIR}/)
 install(TARGETS respeakerd DESTINATION bin)
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/respeakerd_safe DESTINATION bin)
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/respeakerd.service

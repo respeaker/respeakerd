@@ -58,7 +58,7 @@ echo "Will use --source=${SOURCE} for respeakerd"
 # detect `pulse` mode
 CONFIG_FILE=/etc/respeaker/respeakerd.conf
 
-PULSE_MODE=`/usr/local/bin/respeakerd --test --config=${CONFIG_FILE} | grep -c 'mode: pulse'`
+PULSE_MODE=`/usr/bin/respeakerd --test --config=${CONFIG_FILE} | grep -c 'mode: pulse'`
 
 if [[ "${PULSE_MODE}" == 1 ]] ; then
     echo "Work in pulse mode"
@@ -73,4 +73,4 @@ if [[ "${PULSE_MODE}" == 1 ]] ; then
     sleep 1
 fi
 
-/usr/local/bin/respeakerd --config=${CONFIG_FILE} --source="${SOURCE}"
+/usr/bin/respeakerd --config=${CONFIG_FILE} --source="${SOURCE}"
