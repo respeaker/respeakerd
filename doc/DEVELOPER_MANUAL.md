@@ -4,9 +4,9 @@
 
 `respeakerd` is the server application for the microphone array solutions of SEEED, based on `librespeaker` which combines the audio front-end processing algorithms.
 
-It's also a good example on how to utilize the `librespeaker`. Users can implement their own server application / daemon to invoke `librespeaker`.
+It's also a good example showing how to utilize the `librespeaker`. Users can implement their own server application / daemon to invoke `librespeaker`.
 
-This manual shows how to compile and run this project `respeakerd`, and then introduces the protocol used in the communication between `respeakerd` and a Python client implementation of AVS (https://github.com/respeaker/avs).
+This manual shows how to compile and run this project `respeakerd`, and then introduces the protocol used in the communication between `respeakerd` and a Python client implementation for AVS (https://github.com/respeaker/avs).
 
 ## 2. How to compile
 
@@ -17,22 +17,36 @@ This manual shows how to compile and run this project `respeakerd`, and then int
 - gflags: https://gflags.github.io/gflags/, precompiled for ARM platform
 - inih: https://github.com/benhoyt/inih, source files are included
 - libsndfile1-dev libasound2-dev: save PCM to wav file, installed by librespeaker
-- libdbus-1-dev: required by main.cc
+- libdbus-1-dev: nofity led ring server with events
 - cmake
-- librespeaker
+- librespeaker-dev
 
 ```shell
 $ sudo apt install -y cmake libdbus-1-dev
-$ sudo apt install -y --reinstall librespeaker
+$ sudo apt update
+$ sudo apt-cache policy librespeaker
+$ sudo apt install -y librespeaker-dev
 ```
 
 ### 2.2 Compile
 
 ```shell
 $ cd PROJECT-ROOT/build
-$ cmake ..
+$ cmake ..  #`cmake -DCMAKE_BUILD_TYPE=Debug ..` if you want to build the debug version
 $ make
-$ cp src/respeakerd . && chmod a+x ./respeakerd
+```
+
+### 2.3 Build deb package
+
+```shell
+$ sudo apt-get install -y debhelper dh-make fakeroot
+$ mkdir -p build && cd build
+$ cp -rf ../debian .
+$ sudo apt-get update
+$ sudo apt-get install -y --allow-downgrades librespeaker-dev/testing  #or `librespeaker-dev/stretch` if you want to build release version
+$ sed -i '6c \\tcmake -DCMAKE_BUILD_TYPE=Release ..' debian/rules  #if you want to build release version
+$ chmod a+x debian/pack.sh
+$ debian/pack.sh
 ```
 
 ## 3. Parameters
@@ -74,28 +88,28 @@ respeakerd can work in multiple modes.
 2. PulseAudio mode (`-mode=pulse`)
     respeakerd can stream its output into PulseAudio system in this mode. With the PulseAudio system, the processed audio stream out of respeakerd can then be dispatched to arbitrary consumer applications. To work with PulseAudio, configurations need to be done for PulseAudio, see [4. PulseAudio mode](#pulseaudio-mode). After those configurations, PulseAudio will create a fifo file `/tmp/music.input` to receive audio stream. So if you don't know how to configure PulseAudio to create the fifo file at another path, please don't change the `-fifo_file` parameter of respeakerd, just use the default.
 
-<!--3. Manual DoA mode （`-mode=manual_with_kws` or `-mode=manual_without_kws`)
+<!-- 3. Manual DoA mode （`-mode=manual_with_kws` or `-mode=manual_without_kws`)
 
-    These modes are pretty much like the standard mode, respeakerd will also work as a socket server, and communicate with clients via the socket protocol, but disable the DoA functionality. The beamforming will point to the direction specified manually by users. The direction can be set by a JSON command via the socket protocol, see below for more detail.-->
+    These modes are pretty much like the standard mode, respeakerd will also work as a socket server, and communicate with clients via the socket protocol, but disable the DoA functionality. The beamforming will point to the direction specified manually by users. The direction can be set by a JSON command via the socket protocol, see below for more detail. -->
 
 ### 3.2 Configuration file
 
 All the command line options (except --test and --config) will be reflected in the configuration file. The default location of the configuration file is `/etc/respeaker/respeakerd.conf`.
 
-The configurations in the file have lower priority, that is, if you specify the same option both in command line and the configuration file, `respeakerd` will take the value from command line.
+The configurations in the file have lower priority than the command line options, that is, if you specify the same option both in command line and the configuration file, `respeakerd` will take the value from command line.
 
-## 4. PulseAudio mode
+## 4. More about PulseAudio mode
 
 ### 4.1 PulseAudio configuratin
 
-We need PulseAudio's `module-pipe-source` module to be loaded. This is handled in `scripts/respeakerd_safe`, it will detect if users have configured `respeakerd` to work as `pulse`mode, and will load the module automatically. When we're doing development, we might hope to load the module manually.
+We need PulseAudio's `module-pipe-source` module to be loaded. This is handled in `respeakerd_safe`, it will detect if users have configured `respeakerd` to work as `pulse`mode, and will load the module automatically. When we're doing development, we might hope to load the module manually.
 
 ```shell
 pactl load-module module-pipe-source source_name="respeakerd_output" rate=16000 channels=1
 pactl set-default-source respeakerd_output
 ```
 
-Or just put this into PulseAudio's configuration file. 
+Or just put into PulseAudio's configuration file.
 
 ```shell
 $ sudo vim /etc/pulse/default.pa
@@ -117,10 +131,10 @@ $ cd PROJECT-ROOT/build
 $ ./respeakerd --mode=pulse --source="alsa_input.platform-sound_0.seeed-8ch" --debug
 ```
 
-Add other options if you need. 
+Add other options if you need.
 > Please note that if no application's consuming the audio stream from `respeakerd_output` source, respeakerd will seem like get stuck. This is normal because writing to a Linux pipe will be blocked if there's no consumer at the other end of this pipe. Everything will be working if you start to read the pipe, e.g. `parecord -d respeakerd_output dump.wav`.
 
-<!--## 5. Manual DoA mode
+<!-- ## 5. Manual DoA mode
 
 Manual DoA mode is designed for the user who want to detect the speaker direction with other methods(e.g. with camera) and pick the voice audio in that direction.
 

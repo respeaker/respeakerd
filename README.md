@@ -16,7 +16,12 @@ You can backup your workspace to the onboard eMMC. If your onboard eMMC isn't fo
 
 **(2) Raspberry Pi**
 
-raspbian stretch is recommended. You need to install the driver for ReSpeaker Pi Hats, please refer [here](https://github.com/respeaker/seeed-voicecard).
+raspbian `stretch` is recommended. You need to install the driver for ReSpeaker Pi Hats, please refer [here](https://github.com/respeaker/seeed-voicecard).
+
+Now we support the following Pi Hats:
+
+- ReSpeaker 6 Mic Array for Raspberry Pi
+<!-- - ReSpeaker 4 Mic Array for Raspberry Pi -->
 
 Also you need to add the apt repository of Seeed.
 
@@ -34,7 +39,7 @@ ssh to the board, then execute
 curl https://raw.githubusercontent.com/respeaker/respeakerd/master/scripts/install_all.sh|bash
 ```
 
-This script will install all the dependencies, and set the microphone array type in `/etc/respeaker/respeakerd.conf` as your selection. The Alexa authorization is needed by the Python client of respeakerd.
+This script will install all the dependencies, and write the microphone array type in `/etc/respeaker/respeakerd.conf` as your selection. The Alexa authorization is needed by the Python client of respeakerd.
 
 
 
@@ -42,7 +47,7 @@ This script will install all the dependencies, and set the microphone array type
 
 ### 2.1 Run `respeakerd`
 
-In the above step 1.2, a systemd service `respeakerd` will be installed and started. If everything's right, the `respeakerd` should be running now. You can inspect the status of the respeakerd service with
+In the above `step 1.2`, a systemd service `respeakerd` will be installed and started. If everything's right, the `respeakerd` should be running now. You can inspect the status of the respeakerd service with
 
 ```shell
 sudo journalctl -f -u respeakerd
@@ -79,6 +84,13 @@ For ReSpeaker Core v2, there's no `/etc/asound.conf` by default.
 
 For Raspberry Pi, the [seeed-voicecard](https://github.com/respeaker/seeed-voicecard) installation script will install a systemd service which restores `/etc/asound.conf` to its default every boot up. Please make sure you've not disabled the `seeed-voicecard` service.
 
+```shell
+$ sudo systemctl list-unit-files | grep seeed
+seeed-voicecard.service                enabled
+```
+
+
+
 **(b)** Check the volume settings for the playback and cpature devices
 
 For ReSpeaker Core v2, if you want to restore the ALSA volume to its default, do as the following
@@ -104,11 +116,11 @@ For Raspberry Pi, the same thing as `/etc/asound.conf` will happen. The `seeed-v
 
 > Please note that, if you want to change our default volume configuration, any `alsamixer` `alsactl` operation will be overwritten when the system boots up next time. You need to do as the following.
 >
-> Tune the volume with alsamixer -> Save the mixer configuration to state file via `alsactl store` -> `cp /var/lib/alsa/asound.state /etc/voicecard/ac108_asound.state` if you're using ReSpeaker 4 Mic Array for Raspberry Pi, `cp /var/lib/alsa/asound.state /etc/voicecard/ac108_6mic.state` if you're using ReSpeaker Linear 4 Mic Array for Raspberry Pi, ReSpeaker 6 Mic Array for Raspberry Pi.
+> Tune the volume with alsamixer -> Save the mixer configuration to state file via `alsactl store` -> `cp /var/lib/alsa/asound.state /etc/voicecard/ac108_asound.state` if you're using ReSpeaker 4 Mic Array for Raspberry Pi, `cp /var/lib/alsa/asound.state /etc/voicecard/ac108_6mic.state` if you're using ReSpeaker Linear 4 Mic Array for Raspberry Pi, ReSpeaker 6 Mic Array for Raspberry Pi, and then reboot the Pi.
 
 ### 3.3 PulseAudio configuration
 
-`respeakerd` depends on PulseAudio system. For ReSpeaker Core v2, PulseAudio will be installed by default. For Raspberry Pi, PulseAudio will be installed as a dependence of `respeakerd` when you install `respeakerd` with `apt-get`. PulseAudio will detect the microhpne array codec with the `udev` mechanism. So if you ever touched the configuration of PulseAudio and disabled the `udev` module, please remember to enable it. You can check if `udev` is enabled in your PulseAudio configuration with
+`respeakerd` depends on PulseAudio system. For ReSpeaker Core v2, PulseAudio is included by default in the system image. For Raspberry Pi, PulseAudio will be installed as a dependence of `respeakerd` when you install `respeakerd` with `apt-get`. PulseAudio will detect the microhpne array codec with the `udev` mechanism. So if you ever touched the configuration of PulseAudio and disabled the `module-udev-detect` module, please remember to enable it. You can check if `udev` is enabled in your PulseAudio configuration with
 
 ```shell
 $ pactl list modules|grep -n3 udev

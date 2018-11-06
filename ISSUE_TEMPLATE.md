@@ -7,7 +7,7 @@ Please search on the [issue track](https://github.com/respeaker/respeakerd/issue
 
 ## Current Behavior
 <!--- If describing a bug, tell us what happens instead of the expected behavior, attaching logs/command line printings which represent the failure. -->
-<!--- If suggesting a change/improvement, explain the difference from current behavior -->
+<!--- Ignore this if you're suggesting a change/improvement -->
 
 ## Steps to Reproduce (for bugs)
 <!--- Provide a link to a live example, or an unambiguous set of steps to -->
@@ -23,7 +23,7 @@ Please search on the [issue track](https://github.com/respeaker/respeakerd/issue
 <!--- Get the system version via `cat /etc/issue.net` -->
 
 ### b) librespeaker version:
-<!--- The output of `sudo dpkg-query -l librespeaker` -->
+<!--- The output of `sudo apt-cache policy librespeaker` -->
 
 ### c) Python environment:
 <!--- The output of `pip freeze` -->
