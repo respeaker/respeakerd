@@ -26,8 +26,8 @@ extern "C"
 #include <respeaker.h>
 #include <chain_nodes/pulse_collector_node.h>
 #include <chain_nodes/vep_aec_beamforming_node.h>
-#include <chain_nodes/snips_doa_kws_node.h>
-#include <chain_nodes/snowboy_doa_kws_node.h>
+#include <chain_nodes/snips_1b_doa_kws_node.h>
+#include <chain_nodes/snowboy_1b_doa_kws_node.h>
 
 
 #include "json.hpp"
@@ -47,6 +47,15 @@ using TimePoint = std::chrono::time_point<SteadyClock>;
 #define STOP_CAPTURE_TIMEOUT    15000    //millisecond
 #define WAIT_READY_TIMEOUT      30000    //millisecond
 #define SKIP_KWS_TIME_ON_SPEAK  2000     //millisecond
+
+#define MODE_STANDARD           0
+#define MODE_PULSE              1
+#define MODE_M_WITH_KWS         2
+#define MODE_M_WITHOUT_KWS      3
+
+#define KWS_SNIPS               0
+#define KWS_SNOWBOY             1
+#define KWS_NONE                99
 
 // default value for config vars
 std::string default_mode                = "standard";
@@ -401,14 +410,20 @@ int main(int argc, char *argv[])
         exit(1);
     }
 
-    int mode = 0; //standard
+    int mode = MODE_STANDARD; //standard
     if (config_mode == "pulse") {
-        mode = 1;
+        mode = MODE_PULSE;
+    } else if (config_mode == "manual_with_kws") {
+        mode = MODE_M_WITH_KWS;
+    } else if (config_mode == "manual_without_kws") {
+        mode = MODE_M_WITHOUT_KWS;
     }
 
-    int kws_mode = 0; // snips
-    if (config_hotword_engine == "snowboy") {
-        kws_mode = 1;
+    int kws_mode = KWS_SNIPS; // snips
+    if (mode == MODE_M_WITHOUT_KWS) {
+        kws_mode = KWS_NONE;
+    } else if (config_hotword_engine == "snowboy") {
+        kws_mode = KWS_SNOWBOY;
     }
 
     MicType _mic_type = CIRCULAR_6MIC_7BEAM;
@@ -419,7 +434,7 @@ int main(int argc, char *argv[])
     std::cout << "==========================================================" << std::endl;
     std::cout << "parameters" << std::endl;
     std::cout << "----------------------------------------------------------" << std::endl;
-    if (mode == 0) std::cout << "mode: standard" << std::endl;
+    if (mode == MODE_STANDARD) std::cout << "mode: standard" << std::endl;
     else std::cout << "mode: pulse" << std::endl;
     std::cout << "mic_type: " << config_mic_type << std::endl;
     std::cout << "config file: " << FLAGS_config << std::endl;
@@ -445,14 +460,14 @@ int main(int argc, char *argv[])
     // init librespeaker
     std::unique_ptr<PulseCollectorNode> collector;
     std::unique_ptr<VepAecBeamformingNode> vep_aec_bf;
-    std::unique_ptr<SnipsDoaKwsNode> snips_kws;
-    std::unique_ptr<SnowboyDoaKwsNode> snowboy_kws;
+    std::unique_ptr<Snips1bDoaKwsNode> snips_kws;
+    std::unique_ptr<Snowboy1bDoaKwsNode> snowboy_kws;
     std::unique_ptr<ReSpeaker> respeaker;
     collector.reset(PulseCollectorNode::Create(config_source, 16000, BLOCK_SIZE_MS));
     vep_aec_bf.reset(VepAecBeamformingNode::Create(_mic_type, true, config_ref_channel, config_enable_wav_log));
 
-    if (kws_mode == 0) {
-        snips_kws.reset(SnipsDoaKwsNode::Create(config_snips_model_path,
+    if (kws_mode == KWS_SNIPS) {
+        snips_kws.reset(Snips1bDoaKwsNode::Create(config_snips_model_path,
                                                 config_snips_sensitivity,
                                                 true,
                                                 false));
@@ -461,8 +476,8 @@ int main(int argc, char *argv[])
         // snips_kws->SetTriggerPostConfirmThresholdTime(160);
         // snips_kws->SetAutoDoaUpdate(config_dynamic_doa);
     }
-    else if (kws_mode == 1) {
-        snowboy_kws.reset(SnowboyDoaKwsNode::Create(config_snowboy_res_path,
+    else if (kws_mode == KWS_SNOWBOY) {
+        snowboy_kws.reset(Snowboy1bDoaKwsNode::Create(config_snowboy_res_path,
                                                     config_snowboy_model_path,
                                                     config_snowboy_sensitivity));
         snowboy_kws->DisableAutoStateTransfer();
@@ -486,7 +501,7 @@ int main(int argc, char *argv[])
     }
     respeaker->RegisterChainByHead(collector.get());
 
-    if (kws_mode == 0) {
+    if (kws_mode == KWS_SNIPS) {
         snips_kws->SetThreadPriority(99);
         snips_kws->Uplink(vep_aec_bf.get());
 
@@ -494,7 +509,7 @@ int main(int argc, char *argv[])
         respeaker->RegisterHotwordDetectionNode(snips_kws.get());
         respeaker->RegisterOutputNode(snips_kws.get());
     }
-    else if (kws_mode == 1) {
+    else if (kws_mode == KWS_SNOWBOY) {
         snowboy_kws->SetThreadPriority(99);
         snowboy_kws->Uplink(vep_aec_bf.get());
         respeaker->RegisterDirectionManagerNode(snowboy_kws.get());
@@ -535,7 +550,7 @@ int main(int argc, char *argv[])
     DBusConnection *dbus_conn;
     DBusError dbus_err;
 
-    if (mode == 0) {  // standard mode
+    if (mode == MODE_STANDARD) {  // standard mode
         // init the socket
         sock = socket(AF_UNIX, SOCK_STREAM, 0);
         if (sock < 0) {
@@ -596,7 +611,7 @@ int main(int argc, char *argv[])
 
 
     while(!stop){
-        if (mode == 0) {
+        if (mode == MODE_STANDARD) {
             un_size = sizeof(struct sockaddr_un);
             client_sock = accept(sock, (struct sockaddr *)&new_addr, &un_size);
             if (client_sock == -1) {
@@ -628,7 +643,7 @@ int main(int argc, char *argv[])
         // wait the cloud to be ready
         while (!stop && !socket_error)
         {
-            if (mode == 0) {
+            if (mode == MODE_STANDARD) {
                 // wait for the ready signal
                 bool alive = true;
                 one_line = cut_line(client_sock, alive);
@@ -695,7 +710,7 @@ int main(int argc, char *argv[])
         while (!stop && !socket_error)
         {
             // check the status or events from the client side
-            if (mode == 0) {
+            if (mode == MODE_STANDARD) {
                 bool alive = true;
                 do {
                     one_line = cut_line(client_sock, alive);
@@ -739,13 +754,13 @@ int main(int argc, char *argv[])
                 }
             }
 
-            if (kws_mode == 0) {
+            if (kws_mode == KWS_SNIPS) {
                 if (config_debug && tick++ % 12 == 0) {
                     std::cout << "collector depth: " << collector->GetQueueDeepth() << ", vep_aec_bf: " <<
                     vep_aec_bf->GetQueueDeepth() << ", snips: " << snips_kws->GetQueueDeepth() << std::endl;
                 }
             }
-            else if (kws_mode == 1) {
+            else if (kws_mode == KWS_SNOWBOY) {
                 if (config_debug && tick++ % 12 == 0) {
                     std::cout << "collector depth: " << collector->GetQueueDeepth() << ", vep_aec_bf: " <<
                     vep_aec_bf->GetQueueDeepth() << ", snowboy: " << snowboy_kws->GetQueueDeepth() << std::endl;
@@ -760,7 +775,7 @@ int main(int argc, char *argv[])
 
             //if have a client connected,this respeaker always detect hotword,if there are hotword,send event and audio.
             one_block = respeaker->DetectHotword(hotword_index);
-            if (kws_mode == 1) vad_status = respeaker->GetVad();
+            if (kws_mode == KWS_SNOWBOY) vad_status = respeaker->GetVad();
             if (config_dynamic_doa) dir = respeaker->GetDirection();
 
             if (config_enable_wav_log) {
@@ -772,7 +787,7 @@ int main(int argc, char *argv[])
                 std::cout << "detected, but skipped!" << std::endl;
             }
 
-            if (mode == 0) {
+            if (mode == MODE_STANDARD) {
 
                 if ((hotword_index >= 1) && cloud_ready && (SteadyClock::now() - on_speak) > std::chrono::milliseconds(SKIP_KWS_TIME_ON_SPEAK)) {
                     if (!config_dynamic_doa) dir = respeaker->GetDirection();
@@ -816,14 +831,14 @@ int main(int argc, char *argv[])
             sf_close(snd_file);
         }
 
-        if (mode == 0) {
+        if (mode == MODE_STANDARD) {
             close(client_sock);
         } else {
             close(fd);
         }
     }
 
-    if (mode == 0) close(sock);
+    if (mode == MODE_STANDARD) close(sock);
 
     return 0;
 }
