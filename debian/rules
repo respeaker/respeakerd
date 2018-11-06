@@ -7,7 +7,7 @@ override_dh_auto_configure:
 
 override_dh_auto_install:
 	dh_auto_install
-	dh_systemd_enable /etc/systemd/system/respeakerd.service
+	dh_systemd_enable
 
 override_dh_installinit:
 	dh_installinit --no-scripts

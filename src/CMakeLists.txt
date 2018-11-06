@@ -59,9 +59,9 @@ target_link_libraries(respeakerd
 
 install(TARGETS respeakerd DESTINATION bin)
 install(PROGRAMS ${PROJECT_SOURCE_DIR}/scripts/respeakerd_safe DESTINATION bin)
-install(FILES ${PROJECT_SOURCE_DIR}/scripts/respeakerd.service
-              #${PROJECT_SOURCE_DIR}/scripts/respeaker_python_client.service
-        DESTINATION /etc/systemd/system)
+#install(FILES ${PROJECT_SOURCE_DIR}/scripts/respeakerd.service
+#              #${PROJECT_SOURCE_DIR}/scripts/respeaker_python_client.service
+#        DESTINATION /etc/systemd/system)
 install(DIRECTORY ${PROJECT_SOURCE_DIR}/scripts/seeed-voicecard DESTINATION /usr/share/respeaker)
 install(FILES ${PROJECT_SOURCE_DIR}/scripts/respeakerd.conf DESTINATION /etc/respeaker)
 

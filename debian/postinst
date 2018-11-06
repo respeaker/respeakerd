@@ -11,4 +11,9 @@ if [[ $(grep -c RK3229 /proc/device-tree/model) == 0 ]] ; then
     cp -f /usr/share/respeaker/seeed-voicecard/91-seeedvoicecard.rules /etc/udev/rules.d/91-seeedvoicecard.rules
 fi
 
+if [[ -e /etc/systemd/system/respeakerd.service ]] ; then
+    # users may installed the service here according to the previous guide
+    rm /etc/systemd/system/respeakerd.service
+fi
+
 #DEBHELPER#

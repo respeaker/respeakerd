@@ -12,7 +12,7 @@ echo "The platform is $PLATFORM"
 if [[ $PLATFORM == axol ]] ; then
     R=`grep "Image" /etc/issue.net | awk '{print $4}'`
 
-    if [ $(echo "$R < 20180107"|bc) = 1 ]; then
+    if [[ $(echo "$R < 20180107"|bc) = 1 ]] ; then
         echo "Please upgrade your system version to 20180107 or later"
         echo "Refer to the guide here: https://github.com/respeaker/get_started_with_respeaker/blob/master/docs/ReSpeaker_Core_V2/getting_started.md#image-installation"
         exit 1
@@ -21,7 +21,7 @@ fi
 
 USER_ID=`id -u`
 
-if [ ${USER_ID} != 1000 ]; then
+if [[ ${USER_ID} != 1000 ]] ; then
     echo "Please run this script with user ${DEFAULT_USER}"
     exit 1
 fi
@@ -45,10 +45,17 @@ fi
 # python-mraa,python-upm,libmraa1,libupm1,mraa-tools,libdbus-1-3,pulseaudio,mpg123,mpv,gstreamer1.0-plugins-good,gstreamer1.0-plugins-bad,gstreamer1.0-plugins-ugly,gir1.2-gstreamer-1.0,python-gi,python-gst-1.0,python-pyaudio,librespeaker
 sudo apt update
 sudo apt install -y git pulseaudio python-mraa python-upm libmraa1 libupm1 mraa-tools libdbus-1-3 mpg123 mpv gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0 python-gi python-gst-1.0 python-pyaudio
-sudo apt install -y --reinstall librespeaker
+#sudo apt install -y --reinstall librespeaker
 sudo pip install avs pixel_ring voice-engine pydbus
 
 sudo apt install -y --reinstall respeakerd
+
+## Check if the udev rule applies
+NEED_REBOOT=0
+if [[ $(pactl list sources | grep -c alsa_input) == 0 ]] ; then
+    echo "udev rules need reboot to be applied"
+    NEED_REBOOT=1
+fi
 
 MICTYPE=CIRCULAR_6MIC
 ## Select Array Type for RPi
@@ -75,7 +82,7 @@ fi
 
 echo "Your microphone array type is: ${MICTYPE}"
 
-sudo sed -i -e 's/mic_type = \(.*\)/mic_type = ${MICTYPE}/' /etc/respeaker/respeakerd.conf
+sudo sed -i -e "s/mic_type = \(.*\)/mic_type = ${MICTYPE}/" /etc/respeaker/respeakerd.conf
 
 sudo systemctl restart respeakerd
 
@@ -121,11 +128,16 @@ echo ""
 echo "------"
 echo "Open the browser inside the VNC desktop, and go to 'http://127.0.0.1:3000'"
 echo "Login with your Amazon account and authorize Alexa service."
+echo "If you enabled 2FA, you need to login amazon.com first and then 'http://127.0.0.1:3000'"
 echo "When you finish that, the script will continue, or press Ctrl+C if you've done this before"
 
 alexa-auth 2>&1 > /dev/null
 
-echo "Now run the Alexa demo via the following command, the trigger word is 'snowboy'"
+if [[ $PLATFORM == pi && ${NEED_REBOOT} == 1 ]] ; then
+    echo "Please reboot first to apply the udev configurations for PulseAudio."
+fi
+
+echo "Run the Alexa demo via the following command, the trigger word is 'snowboy'"
 echo ""
 echo "python ${H}/respeakerd/clients/Python/demo_respeaker_v2_vep_alexa_with_light.py"
 echo ""
