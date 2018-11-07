@@ -57,6 +57,9 @@ if [[ $(pactl list sources | grep -c alsa_input) == 0 ]] ; then
     NEED_REBOOT=1
 fi
 
+## Clear the stdin buffer
+read -t 1 -n 10000 discard
+
 MICTYPE=CIRCULAR_6MIC
 ## Select Array Type for RPi
 if [[ $PLATFORM == pi ]] ; then
