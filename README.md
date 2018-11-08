@@ -23,13 +23,22 @@ Now we support the following Pi Hats:
 - ReSpeaker 6 Mic Array for Raspberry Pi
 <!-- - ReSpeaker 4 Mic Array for Raspberry Pi -->
 
-Also you need to add the apt repository of Seeed.
+Secondly you need to add the apt repository of Seeed.
 
 ```shell
 $ echo "deb https://seeed-studio.github.io/pi_repo/ stretch main" | sudo tee /etc/apt/sources.list.d/seeed.list
 $ curl https://seeed-studio.github.io/pi_repo/public.key | sudo apt-key add -
 $ sudo apt update
 ```
+
+After the first time you installted the Hat's driver, please do the  following configuration.
+
+```shell
+$ sudo apt install respeakerd-pi-tools
+$ sudo respeakerd-pi-tools setup-pulse
+```
+
+Reboot the Pi to apply the configurations ( for PulseAudio ) before you move to the next step.
 
 ### 1.2 Installation
 
