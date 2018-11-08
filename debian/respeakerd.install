@@ -1,0 +1,3 @@
+etc/respeaker/*.conf
+usr/bin/respeakerd
+usr/bin/respeakerd_safe

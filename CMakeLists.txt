@@ -22,4 +22,5 @@ string(FIND ${arch} "86" is_x86)
 string(FIND ${arch} "arm" is_arm)
 
 add_subdirectory(src)
+add_subdirectory(scripts)
 

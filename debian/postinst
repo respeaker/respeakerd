@@ -1,14 +1,8 @@
 #!/bin/bash
 
-echo "Setting up respeakerd ..."
-
-if [[ $(grep -c RK3229 /proc/device-tree/model) == 0 ]] ; then
-    echo "Install udev rules for Pi ..."
+if grep -q 'Raspberry Pi' /proc/device-tree/model; then
     sed -i -e 's/User=respeaker/User=pi/' /lib/systemd/system/respeakerd.service
     sed -i -e 's/Group=respeaker/Group=pi/' /lib/systemd/system/respeakerd.service
-    cp -f /usr/share/respeaker/seeed-voicecard/pulse_config_4mic/seeed-voicecard.conf /usr/share/pulseaudio/alsa-mixer/profile-sets/seeed-voicecard-4mic.conf
-    cp -f /usr/share/respeaker/seeed-voicecard/pulse_config_6mic/seeed-voicecard.conf /usr/share/pulseaudio/alsa-mixer/profile-sets/seeed-voicecard-8mic.conf
-    cp -f /usr/share/respeaker/seeed-voicecard/91-seeedvoicecard.rules /etc/udev/rules.d/91-seeedvoicecard.rules
 fi
 
 if [[ -e /etc/systemd/system/respeakerd.service ]] ; then

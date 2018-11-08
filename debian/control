@@ -32,3 +32,11 @@ Depends:
 	python-upm,
 	${shlibs:Depends}, ${misc:Depends}
 Description: respeakerd is the server application for the microphone array solutions of SEEED, based on librespeaker which combines the audio front-end processing algorithms.
+
+Package: respeakerd-pi-tools
+Architecture: armhf
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: respeakerd-pi-tools is a tool set that used for Raspberry Pi, which can assist the configuration for respeakerd.
+
+
+

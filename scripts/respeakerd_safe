@@ -28,10 +28,14 @@ echo "Start respeakerd ..."
 # detect proper source
 SOURCE=alsa_input.platform-sound_0.seeed-8ch  # this is the source on Core v2
 
-PLATFORM=pi
-if [[ $(grep -c RK3229 /proc/device-tree/model) == 1 ]] ; then
+PLATFORM=
+if grep -q RK3229 /proc/device-tree/model; then
     PLATFORM=axol
 fi
+if grep -q 'Raspberry Pi' /proc/device-tree/model; then
+    PLATFORM=pi
+fi
+
 if [[ "${PLATFORM}" == pi ]] ; then
     is_1a=$(i2cdetect -y  1 0x1a 0x1a | grep -c UU)
     is_35=$(i2cdetect -y  1 0x35 0x35 | grep -c UU)
@@ -49,11 +53,19 @@ if [[ "${PLATFORM}" == pi ]] ; then
 
     if [[ "${is_3b}" == 1 && "${is_35}" == 1 ]] ; then
         echo "Detected seeed 8mic voicecard on Pi"
+        # without applying udev: alsa_input.platform-soc_sound.multichannel-input
         SOURCE=alsa_input.platform-soc_sound.seeed-8ch
     fi
 fi
 
 echo "Will use --source=${SOURCE} for respeakerd"
+
+# check if the source is available
+FOUND=`pactl list sources | grep -c "${SOURCE}"`
+if [[ $FOUND == 0 ]]; then
+    echo "The source <${SOURCE}> not found, abort!"
+    exit 1
+fi
 
 # detect `pulse` mode
 CONFIG_FILE=/etc/respeaker/respeakerd.conf
@@ -71,6 +83,8 @@ if [[ "${PULSE_MODE}" == 1 ]] ; then
         sleep 1
     done
     sleep 1
+else
+    pactl set-default-source ${SOURCE}
 fi
 
 /usr/bin/respeakerd --config=${CONFIG_FILE} --source="${SOURCE}"

@@ -1,10 +1,10 @@
 #!/bin/bash
 
-PLATFORM=pi
-DEFAULT_USER=pi
-if [[ $(grep -c RK3229 /proc/device-tree/model) == 1 ]] ; then
-    PLATFORM=axol
-    DEFAULT_USER=respeaker
+PLATFORM=axol
+DEFAULT_USER=respeaker
+if grep -q 'Raspberry Pi' /proc/device-tree/model; then
+    PLATFORM=pi
+    DEFAULT_USER=pi
 fi
 
 echo "The platform is $PLATFORM"
@@ -21,25 +21,11 @@ fi
 
 USER_ID=`id -u`
 
-if [[ ${USER_ID} != 1000 ]] ; then
+if [[ $(whoami) != ${DEFAULT_USER} ]] ; then
     echo "Please run this script with user ${DEFAULT_USER}"
     exit 1
 fi
 
-## prepare PulseAudio
-#rm -rf ~/.config/pulse/client.conf
-#pulseaudio -k
-#sleep 1
-
-# SEEED_8MIC_EXISTS=`pactl list sources|grep alsa_input.platform-sound_0.seeed-8ch -c`
-
-# if [ $SEEED_8MIC_EXISTS = 0 ]; then
-#     echo "PulseAudio device <alsa_input.platform-sound_0.seeed-8ch> not found"
-#     echo "Please make sure you are running this script on ReSpeaker Core v2"
-#     exit 1
-# fi
-
-# PULSE_SOURCE="alsa_input.platform-sound_0.seeed-8ch"
 
 ## Install deps
 # python-mraa,python-upm,libmraa1,libupm1,mraa-tools,libdbus-1-3,pulseaudio,mpg123,mpv,gstreamer1.0-plugins-good,gstreamer1.0-plugins-bad,gstreamer1.0-plugins-ugly,gir1.2-gstreamer-1.0,python-gi,python-gst-1.0,python-pyaudio,librespeaker
@@ -50,42 +36,18 @@ sudo pip install avs pixel_ring voice-engine pydbus
 
 sudo apt install -y --reinstall respeakerd
 
-## Check if the udev rule applies
-NEED_REBOOT=0
-if [[ $(pactl list sources | grep -c alsa_input) == 0 ]] ; then
-    echo "udev rules need reboot to be applied"
-    NEED_REBOOT=1
-fi
 
-## Clear the stdin buffer
-read -t 1 -n 10000 discard
-
-MICTYPE=CIRCULAR_6MIC
-## Select Array Type for RPi
 if [[ $PLATFORM == pi ]] ; then
-    PS3='Please select the type of your microphone array: '
-    options=("ReSpeaker 6 Mic Array for Raspberry Pi" "ReSpeaker 4 Mic Array for Raspberry Pi" "Others - not supported now")
-    select opt in "${options[@]}" ; do
-        case "$REPLY" in
-            1)
-                MICTYPE=CIRCULAR_6MIC
-                break
-                ;;
-            2)
-                MICTYPE=CIRCULAR_4MIC
-                break
-                ;;
-            3)
-                exit 1
-                ;;
-            *) echo "invalid option $REPLY";;
-        esac
-    done
+    ## Check if PulseAudio has been configured right
+    FOUND=`pactl list sources | grep -c -E "Name:.*seeed-(8ch|source)"`
+    if [[ $FOUND == 0 ]]; then
+        echo "Please use \"respeakerd-pi-tools setup-pulse\"  to configure PulseAudio first."
+        exit 1
+    fi
+
+    ## Select array type
+    respeakerd-pi-tools select-array
 fi
-
-echo "Your microphone array type is: ${MICTYPE}"
-
-sudo sed -i -e "s/mic_type = \(.*\)/mic_type = ${MICTYPE}/" /etc/respeaker/respeakerd.conf
 
 sudo systemctl restart respeakerd
 
@@ -135,10 +97,6 @@ echo "If you enabled 2FA, you need to login amazon.com first and then 'http://12
 echo "When you finish that, the script will continue, or press Ctrl+C if you've done this before"
 
 alexa-auth 2>&1 > /dev/null
-
-if [[ $PLATFORM == pi && ${NEED_REBOOT} == 1 ]] ; then
-    echo "Please reboot first to apply the udev configurations for PulseAudio."
-fi
 
 echo "Run the Alexa demo via the following command, the trigger word is 'snowboy'"
 echo ""
