@@ -491,8 +491,8 @@ int main(int argc, char *argv[])
 
 
     vep_aec_bf->Uplink(collector.get());
-    collector->SetThreadPriority(1);
-    vep_aec_bf->SetThreadPriority(50);
+    // collector->SetThreadPriority(5);
+    // vep_aec_bf->SetThreadPriority(6);
 
     if (config_debug) {
         respeaker.reset(ReSpeaker::Create(DEBUG_LOG_LEVEL));
@@ -502,7 +502,7 @@ int main(int argc, char *argv[])
     respeaker->RegisterChainByHead(collector.get());
 
     if (kws_mode == KWS_SNIPS) {
-        snips_kws->SetThreadPriority(99);
+        // snips_kws->SetThreadPriority(7);
         snips_kws->Uplink(vep_aec_bf.get());
 
         respeaker->RegisterDirectionManagerNode(snips_kws.get());
@@ -510,13 +510,13 @@ int main(int argc, char *argv[])
         respeaker->RegisterOutputNode(snips_kws.get());
     }
     else if (kws_mode == KWS_SNOWBOY) {
-        snowboy_kws->SetThreadPriority(99);
+        // snowboy_kws->SetThreadPriority(7);
         snowboy_kws->Uplink(vep_aec_bf.get());
         respeaker->RegisterDirectionManagerNode(snowboy_kws.get());
         respeaker->RegisterHotwordDetectionNode(snowboy_kws.get());
         respeaker->RegisterOutputNode(snowboy_kws.get());
     }
-    else if (kws_mode == 2) {
+    else if (kws_mode == KWS_NONE) {
         // no_kws->SetThreadPriority(99);
         // no_kws->Uplink(vep_aec_bf.get());
         // respeaker->RegisterDirectionManagerNode(no_kws.get());
@@ -817,11 +817,11 @@ int main(int argc, char *argv[])
                     dbus_send_trigger_signal(dbus_conn, dir);
                 }
                 // pulse mode, we just write the audio data into the fifo file
-                int ret = write(fd, one_block.data(), one_block.length());
-
-                if (ret < 0) {
-                    socket_error = true;
-                }
+//                int ret = write(fd, one_block.data(), one_block.length());
+//
+//                if (ret < 0) {
+//                    socket_error = true;
+//                }
             }
         } // while
         respeaker->Stop();
