@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 
 message("== CMakeLists.txt")
 
-project(respeakerd VERSION 1.2.1)
+project(respeakerd VERSION 1.2.2)
 
 # you should only bump this up when librespeaker's ABI has been changed
 set(MIN_LIBRESPEAKER_VERSION 2.1.1)
