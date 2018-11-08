@@ -48,20 +48,20 @@ setup_pulse() {
     cp ${DEFAULT_PA} ${DEFAULT_PA_BAK_NAME}
     case "$CODEC" in
         4)
-            sed -n -i '/default-sample-format/c\default-sample-format = float32le' ${DAEMON_CONF}
-            sed -n -i '/default-sample-rate/c\default-sample-rate = 48000' ${DAEMON_CONF}
-            # sed -n -i '/default-sample-channels/c\default-sample-channels = 4' ${DAEMON_CONF}
+            sed -i '/default-sample-format/c\default-sample-format = float32le' ${DAEMON_CONF}
+            sed -i '/default-sample-rate/c\default-sample-rate = 48000' ${DAEMON_CONF}
+            # sed -i '/default-sample-channels/c\default-sample-channels = 4' ${DAEMON_CONF}
 
-            # sed -n -i '/set-default-sink/c\set-default-sink alsa_output.platform-soc_audio.analog-stereo' ${DEFAULT_PA}
-            sed -n -i '/set-default-source/c\set-default-source alsa_input.platform-soc_sound.seeed-source' ${DEFAULT_PA}
+            # sed -i '/set-default-sink/c\set-default-sink alsa_output.platform-soc_audio.analog-stereo' ${DEFAULT_PA}
+            sed -i '/set-default-source/c\set-default-source alsa_input.platform-soc_sound.seeed-source' ${DEFAULT_PA}
             ;;
         8)
-            sed -n -i '/default-sample-format/c\default-sample-format = float32le' ${DAEMON_CONF}
-            sed -n -i '/default-sample-rate/c\default-sample-rate = 48000' ${DAEMON_CONF}
-            # sed -n -i '/default-sample-channels/c\default-sample-channels = 8' ${DAEMON_CONF}
+            sed -i '/default-sample-format/c\default-sample-format = float32le' ${DAEMON_CONF}
+            sed -i '/default-sample-rate/c\default-sample-rate = 48000' ${DAEMON_CONF}
+            # sed -i '/default-sample-channels/c\default-sample-channels = 8' ${DAEMON_CONF}
 
-            sed -n -i '/set-default-sink/c\set-default-sink alsa_output.platform-soc_sound.seeed-2ch' ${DEFAULT_PA}
-            sed -n -i '/set-default-source/c\set-default-source alsa_input.platform-soc_sound.seeed-8ch' ${DEFAULT_PA}
+            sed -i '/set-default-sink/c\set-default-sink alsa_output.platform-soc_sound.seeed-2ch' ${DEFAULT_PA}
+            sed -i '/set-default-source/c\set-default-source alsa_input.platform-soc_sound.seeed-8ch' ${DEFAULT_PA}
             ;;
         *)
             exit 1
@@ -83,9 +83,11 @@ select_array() {
         case "$REPLY" in
             1)
                 MICTYPE=CIRCULAR_6MIC
+                break
                 ;;
             2)
                 MICTYPE=CIRCULAR_4MIC
+                break
                 ;;
             3)
                 exit 1

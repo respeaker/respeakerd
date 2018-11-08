@@ -29,19 +29,19 @@ fi
 
 ## Install deps
 # python-mraa,python-upm,libmraa1,libupm1,mraa-tools,libdbus-1-3,pulseaudio,mpg123,mpv,gstreamer1.0-plugins-good,gstreamer1.0-plugins-bad,gstreamer1.0-plugins-ugly,gir1.2-gstreamer-1.0,python-gi,python-gst-1.0,python-pyaudio,librespeaker
-sudo apt update
-sudo apt install -y git pulseaudio python-mraa python-upm libmraa1 libupm1 mraa-tools libdbus-1-3 mpg123 mpv gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0 python-gi python-gst-1.0 python-pyaudio
+sudo apt-get update
+sudo apt-get install -y git pulseaudio python-mraa python-upm libmraa1 libupm1 mraa-tools libdbus-1-3 mpg123 mpv gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0 python-gi python-gst-1.0 python-pyaudio
 #sudo apt install -y --reinstall librespeaker
 sudo pip install avs pixel_ring voice-engine pydbus
 
-sudo apt install -y --reinstall respeakerd
+sudo apt-get install -y --reinstall respeakerd
 
 
 if [[ $PLATFORM == pi ]] ; then
     ## Check if PulseAudio has been configured right
     FOUND=`pactl list sources | grep -c -E "Name:.*seeed-(8ch|source)"`
     if [[ $FOUND == 0 ]]; then
-        echo "Please use \"respeakerd-pi-tools setup-pulse\"  to configure PulseAudio first."
+        echo "Please use \"sudo respeakerd-pi-tools setup-pulse\"  to configure PulseAudio first."
         exit 1
     fi
 
