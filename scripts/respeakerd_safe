@@ -68,9 +68,7 @@ if [[ $FOUND == 0 ]]; then
 fi
 
 # detect `pulse` mode
-CONFIG_FILE=/etc/respeaker/respeakerd.conf
-
-PULSE_MODE=`/usr/bin/respeakerd --test --config=${CONFIG_FILE} | grep -c 'mode: pulse'`
+PULSE_MODE=`/usr/bin/respeakerd --test | grep -c 'mode: pulse'`
 
 if [[ "${PULSE_MODE}" == 1 ]] ; then
     echo "Work in pulse mode"
@@ -87,4 +85,4 @@ else
     pactl set-default-source ${SOURCE}
 fi
 
-/usr/bin/respeakerd --config=${CONFIG_FILE} --source="${SOURCE}"
+/usr/bin/respeakerd --source="${SOURCE}"

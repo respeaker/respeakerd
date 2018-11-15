@@ -38,10 +38,9 @@ sudo systemctl is-active -q respeakerd && sudo systemctl stop respeakerd
 # python-mraa,python-upm,libmraa1,libupm1,mraa-tools,libdbus-1-3,pulseaudio,mpg123,mpv,gstreamer1.0-plugins-good,gstreamer1.0-plugins-bad,gstreamer1.0-plugins-ugly,gir1.2-gstreamer-1.0,python-gi,python-gst-1.0,python-pyaudio,librespeaker
 sudo apt-get update
 sudo apt-get install -y git pulseaudio python-mraa python-upm libmraa1 libupm1 mraa-tools libdbus-1-3 mpg123 mpv gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0 python-gi python-gst-1.0 python-pyaudio
-#sudo apt install -y --reinstall librespeaker
-sudo pip install avs pixel_ring voice-engine pydbus
-
+sudo apt-get install -y --reinstall librespeaker
 sudo apt-get install -y --reinstall respeakerd
+sudo pip install avs pixel_ring voice-engine pydbus
 
 H="/home/${DEFAULT_USER}"
 
@@ -49,11 +48,12 @@ if [[ -e $H/.config/pulse/client.conf ]]; then
     rm -rf $H/.config/pulse/client.conf
 fi
 
-if [[ $PLATFORM == axol && `grep -c "default-sample-format = float32le"` == 0 ]] ; then
-    DAEMON_CONF=/etc/pulse/daemon.conf
+DAEMON_CONF=/etc/pulse/daemon.conf
+if [[ $PLATFORM == axol && `grep -c "default-sample-format = float32le" ${DAEMON_CONF}` == 0 ]] ; then
     sudo sed -i '/default-sample-format/c\default-sample-format = float32le' ${DAEMON_CONF}
     sudo sed -i '/default-sample-rate/c\default-sample-rate = 48000' ${DAEMON_CONF}
     pulseaudio -k
+    sleep 1
     pactl info
 fi
 
@@ -77,7 +77,6 @@ echo ""
 echo "sudo journalctl -f -u respeakerd"
 echo ""
 
-H="/home/${DEFAULT_USER}"
 
 cd $H
 
