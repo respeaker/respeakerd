@@ -162,4 +162,5 @@ You will be able to find a source with name
 ## Other resources
 
 - [Developer Manual](doc/DEVELOPER_MANUAL.md) - More technical details
+- [Change Log](doc/CHANGELOG.md)
 
