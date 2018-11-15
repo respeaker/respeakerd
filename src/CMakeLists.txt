@@ -2,19 +2,6 @@ message("== src/CMakeLists.txt")
 
 include(FindPkgConfig)
 
-set(GFLAGS_PATH ${PROJECT_SOURCE_DIR}/libs/gflags/lib/ubuntu64)
-
-if(${is_arm} GREATER -1)
-    set(GFLAGS_PATH ${PROJECT_SOURCE_DIR}/libs/gflags/lib/rpi)
-endif(${is_arm} GREATER -1)
-
-# gflags
-find_library(LIBGFLAGS_PATH libgflags_nothreads.a ${GFLAGS_PATH} NO_DEFAULT_PATH)
-if(NOT LIBGFLAGS_PATH)
-message(FATAL_ERROR "libgflags.a not found")
-endif(NOT LIBGFLAGS_PATH)
-message(STATUS "gflags is found at " ${LIBGFLAGS_PATH})
-
 pkg_check_modules(SNDFILE  REQUIRED  sndfile)
 
 pkg_check_modules(DBUS  REQUIRED  dbus-1)
@@ -43,8 +30,6 @@ add_definitions(-DRESPEAKERD_VERSION="${PROJECT_VERSION}")
 set(CMAKE_CXX_FLAGS "-fPIC -std=c++11 -fpermissive")
 
 set(SRC
-    ini/ini.c
-    ini/INIReader.cpp
     main.cc
 )
 

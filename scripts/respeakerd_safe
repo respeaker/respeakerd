@@ -76,7 +76,7 @@ if [[ "${PULSE_MODE}" == 1 ]] ; then
     echo "Work in pulse mode"
     MODULE_LOADED=`pactl list modules | grep -c 'module-pipe-source'`
     if [[ "${MODULE_LOADED}" == 0 ]] ; then
-        pactl load-module module-pipe-source source_name="respeakerd_output" rate=16000 channels=1
+        pactl load-module module-pipe-source source_name="respeakerd_output" format=s16le rate=16000 channels=1
     fi
     pactl set-default-source respeakerd_output
     while [[ ! -p /tmp/music.input ]] ; do
