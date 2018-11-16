@@ -654,6 +654,9 @@ int main(int argc, char *argv[])
             close(sock);
             exit(1);
         }
+
+        std::cout << "now waiting for client connections ..." << std::endl;
+
     } else {  // pulse mode
         while (!file_exist(config_fifo_file.c_str())) {
             std::cout << "fifo file does not exist: " << config_fifo_file << ", retry in 1 second ..." << std::endl;

@@ -16,6 +16,8 @@ You can backup your workspace to the onboard eMMC. If your onboard eMMC isn't fo
 
 **(2) Raspberry Pi**
 
+**NOTE: The support for Pi is still under development.**
+
 raspbian `stretch` is recommended. You need to install the driver for ReSpeaker Pi Hats, please refer [here](https://github.com/respeaker/seeed-voicecard).
 
 Now we support the following Pi Hats:
