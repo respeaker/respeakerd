@@ -14,12 +14,11 @@ This manual shows how to compile and run this project `respeakerd`, and then int
 
 - json: https://github.com/nlohmann/json, header only
 - base64: https://github.com/tplgy/cppcodec, header only
-- gflags: https://gflags.github.io/gflags/, precompiled for ARM platform
 - inih: https://github.com/benhoyt/inih, source files are included
 - libsndfile1-dev libasound2-dev: save PCM to wav file, installed by librespeaker
 - libdbus-1-dev: nofity led ring server with events
 - cmake
-- librespeaker-dev
+- librespeaker-dev, including header files for compilation with librespeaker
 
 ```shell
 $ sudo apt install -y cmake libdbus-1-dev
@@ -56,28 +55,44 @@ $ debian/pack.sh
 The command line parameters may change during the development of this project. To get the updated information of the command line paramenters, please inspect the options with
 
 ```shell
-$ cd PROJECT-ROOT/build
-$ ./respeakerd -help
+$ respeakerd -help
 ```
 
-```text
--agc_level (dBFS for AGC, the range is [-31, 0]) type: int32 default: -3
--config (the path of the configuration file) type: string default: "/etc/respeaker/respeakerd.conf"
--debug (print more message) type: bool default: false
--dynamic_doa (if enabled, the DoA direction will dynamically track the sound, otherwise it only changes when hotword detected) type: bool default: false
--enable_wav_log (enable logging audio streams into wav files for VEP and respeakerd) type: bool default: false
--fifo_file (the path of the fifo file when enable pulse mode) type: string default: "/tmp/music.input"
--hotword_engine (the hotword engine, can be snips, snowboy) type: string default: "snowboy"
--mic_type (the type of microphone array, can be CIRCULAR_6MIC, CIRCULAR_4MIC) type: string default: "CIRCULAR_6MIC"
--mode (the mode of respeakerd, can be standard, pulse) type: string default: "standard"
--ref_channel (the channel index of the AEC reference, 6 or 7) type: int32 default: 6
--snips_model_path (the path to snips-hotword's model file) type: string default: "/usr/share/respeaker/snips/model"
--snips_sensitivity (the sensitivity of snips-hotword) type: double default: 0.5
--snowboy_model_path (the path to snowboay's model file) type: string default: "/usr/share/respeaker/snowboy/resources/snowboy.umdl"
--snowboy_res_path (the path to snowboay's resource file) type: string default: "/usr/share/respeaker/snowboy/resources/common.res"
--snowboy_sensitivity (the sensitivity of snowboay) type: string default: "0.5"
--source (the source of pulseaudio) type: string default: "default"
--test (test the configuration file) type: bool default: false
+```shell
+Usage: respeakerd [options]
+respeakerd is a server application for the microphone arrays of SEEED.
+
+  -m, --mode=MODE                          the mode of respeakerd, can be: standard, pulse
+                                           default: standard
+      --mic-type=MIC_TYPE                  the type of microphone array, can be CIRCULAR_6MIC, CIRCULAR_4MIC
+                                           default: CIRCULAR_6MIC
+  -t, --test                               test the configuration file and exit
+      --hotword-engine=STRING              the hotword engine, can be: snowboy, snips
+                                           default: snowboy
+      --snowboy-res-path=PATH              the path to snowboay's resource file
+                                           default: /usr/share/respeaker/snowboy/resources/common.res
+      --snowboy-model-path=PATH            the path to snowboay's model file
+                                           default: /usr/share/respeaker/snowboy/resources/snowboy.umdl
+      --snowboy-sensitivity=FLOAT_NUMBER   the sensitivity of snowboy
+                                           default: 0.5
+      --snips-model-path=PATH              the path to snips's hotword model files
+                                           default: /usr/share/respeaker/snips/model
+      --snips-sensitivity=FLOAT_NUMBER     the sensitivity of snips hotword engine
+                                           default: 0.5
+  -s, --source=STRING                      the source of pulseaudio from which the audio stream is pulled
+                                           default: default
+  -g, --agc-level=INTEGER                  target dBFS for AGC, the range is [-31, 0]
+                                           e.g. -g "-3" or --agc-level="-3", default: -3
+  -r, --ref-channel=INTEGER                the channel index of the AEC reference, 6 or 7
+                                           default: 6
+      --fifo-file=FILE                     the path of the fifo file which is required by the pulse mode
+                                           default: /tmp/music.input
+      --dynamic-doa                        if specified, the DoA direction will dynamically track the sound,
+                                           otherwise it only changes when hotword detected
+  -w, --enable-wav-log                     enable logging audio streams into wav files for debugging purpose
+  -v, --debug                              print more messages
+  -h, --help                               display this help and exit
+      --version                            output version information and exit
 ```
 
 respeakerd can work in multiple modes.
