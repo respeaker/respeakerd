@@ -4,10 +4,12 @@
 */.DS_Store
 */._.DS_Store
 
+.vscode
+.idea
+
 /build
 /debug
 /release
-.vscode
 CMakeFiles
 CMakeCache.txt
 Makefile

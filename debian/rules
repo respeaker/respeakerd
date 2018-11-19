@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+%:
+	dh $@
+
+override_dh_auto_configure:
+	cmake -DCMAKE_BUILD_TYPE=Debug ..
+
+override_dh_auto_install:
+	dh_auto_install
+	dh_systemd_enable
+
+override_dh_installinit:
+	dh_installinit --no-scripts
+
+override_dh_usrlocal:
+	echo "..."
+
+override_dh_clean:
+	dh_clean
+
+

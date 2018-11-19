@@ -1,12 +1,88 @@
 #!/bin/bash
 
+# systemd run this script with user respeaker/pi, not root
+
+[[ $(command -v pulseaudio) ]] || {
+    echo "PulseAudio is not installed."
+    exit 1
+}
+
+echo "Check PulseAudio daemon ..."
+
+# this will trigger the auto-spawn for PulseAudio if it's not started
+pactl info > /dev/null
+
 pulseaudio --check
 
-while [ $? == 1 ]; do
+while [[ $? == 1 ]] ; do
     sleep 1
     pulseaudio --check
 done
 
-sleep 5
+sleep 1
 
-/usr/local/bin/respeakerd --snowboy_res_path="/usr/local/etc/respeakerd/resources/common.res" --snowboy_model_path="/usr/local/etc/respeakerd/resources/snowboy.umdl" --snowboy_sensitivity="0.4" --source="alsa_input.platform-sound_0.seeed-8ch"
+echo "PulseAudio daemon up."
+
+echo "Start respeakerd ..."
+
+# detect proper source
+SOURCE=alsa_input.platform-sound_0.seeed-8ch  # this is the source on Core v2
+
+PLATFORM=
+if grep -q RK3229 /proc/device-tree/model; then
+    PLATFORM=axol
+fi
+if grep -q 'Raspberry Pi' /proc/device-tree/model; then
+    PLATFORM=pi
+fi
+
+if [[ "${PLATFORM}" == pi ]] ; then
+    is_1a=$(i2cdetect -y  1 0x1a 0x1a | grep -c UU)
+    is_35=$(i2cdetect -y  1 0x35 0x35 | grep -c UU)
+    is_3b=$(i2cdetect -y  1 0x3b 0x3b | grep -c UU)
+
+    if [[ "${is_1a}" == 1 && "${is_35}" == 0 ]] ; then
+        echo "Detected 2 mic on Pi, not supported"
+        exit 1
+    fi
+
+    if [[ "${is_3b}" == 1 && "${is_35}" == 0 ]] ; then
+        echo "Detected seeed 4mic voicecard on Pi"
+        SOURCE=alsa_input.platform-soc_sound.seeed-source
+    fi
+
+    if [[ "${is_3b}" == 1 && "${is_35}" == 1 ]] ; then
+        echo "Detected seeed 8mic voicecard on Pi"
+        # without applying udev: alsa_input.platform-soc_sound.multichannel-input
+        SOURCE=alsa_input.platform-soc_sound.seeed-8ch
+    fi
+fi
+
+echo "Will use --source=${SOURCE} for respeakerd"
+
+# check if the source is available
+FOUND=`pactl list sources | grep -c "${SOURCE}"`
+if [[ $FOUND == 0 ]]; then
+    echo "The source <${SOURCE}> not found, abort!"
+    exit 1
+fi
+
+# detect `pulse` mode
+PULSE_MODE=`/usr/bin/respeakerd --test | grep -c 'mode: pulse'`
+
+if [[ "${PULSE_MODE}" == 1 ]] ; then
+    echo "Work in pulse mode"
+    MODULE_LOADED=`pactl list modules | grep -c 'module-pipe-source'`
+    if [[ "${MODULE_LOADED}" == 0 ]] ; then
+        pactl load-module module-pipe-source source_name="respeakerd_output" format=s16le rate=16000 channels=1
+    fi
+    pactl set-default-source respeakerd_output
+    while [[ ! -p /tmp/music.input ]] ; do
+        sleep 1
+    done
+    sleep 1
+else
+    pactl set-default-source ${SOURCE}
+fi
+
+/usr/bin/respeakerd --source="${SOURCE}"

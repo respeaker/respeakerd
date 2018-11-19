@@ -1,0 +1,135 @@
+#!/bin/bash
+
+CODEC=0
+
+if grep -q RK3229 /proc/device-tree/model; then
+    echo "These tools are only for Raspberry Pi."
+    exit 1
+fi
+
+query_codec() {
+    is_1a=$(i2cdetect -y  1 0x1a 0x1a | grep -c UU)
+    is_35=$(i2cdetect -y  1 0x35 0x35 | grep -c UU)
+    is_3b=$(i2cdetect -y  1 0x3b 0x3b | grep -c UU)
+
+    if [[ "${is_1a}" == 1 && "${is_35}" == 0 ]]; then
+        echo "Detected 2 mic on Pi, not supported"
+        exit 1
+    elif [[ "${is_3b}" == 1 && "${is_35}" == 0 ]]; then
+        echo "Detected seeed 4mic voicecard on Pi"
+        CODEC=4
+    elif [[ "${is_3b}" == 1 && "${is_35}" == 1 ]]; then
+        echo "Detected seeed 8mic voicecard on Pi"
+        CODEC=8
+    else
+        echo "Unsupported codec, exit ..."
+        exit 1
+    fi
+}
+
+setup_pulse() {
+    if ! command -v pulseaudio; then
+        echo "PulseAudio has not been installed yet, install it ..."
+        sudo apt-get -y install pulseaudio
+        pactl info > /dev/null
+    fi
+
+    echo "Install udev rules for PulseAudio ..."
+    cp -f /usr/share/respeaker/seeed-voicecard/pulse_config_4mic/seeed-voicecard.conf /usr/share/pulseaudio/alsa-mixer/profile-sets/seeed-voicecard-4mic.conf
+    cp -f /usr/share/respeaker/seeed-voicecard/pulse_config_6mic/seeed-voicecard.conf /usr/share/pulseaudio/alsa-mixer/profile-sets/seeed-voicecard-8mic.conf
+    cp -f /usr/share/respeaker/seeed-voicecard/91-seeedvoicecard.rules /etc/udev/rules.d/91-seeedvoicecard.rules
+
+    echo "Tune the configurations of PulseAudio to the requirement of respeakerd ..."
+    DAEMON_CONF=/etc/pulse/daemon.conf
+    DAEMON_CONF_BAK_NAME=${DAEMON_CONF}.bak-$(date +%Y%m%d%H%M%S)
+    DEFAULT_PA=/etc/pulse/default.pa
+    DEFAULT_PA_BAK_NAME=${DEFAULT_PA}.bak-$(date +%Y%m%d%H%M%S)
+    cp ${DAEMON_CONF} ${DAEMON_CONF_BAK_NAME}
+    cp ${DEFAULT_PA} ${DEFAULT_PA_BAK_NAME}
+    case "$CODEC" in
+        4)
+            sed -i '/default-sample-format/c\default-sample-format = float32le' ${DAEMON_CONF}
+            sed -i '/default-sample-rate/c\default-sample-rate = 48000' ${DAEMON_CONF}
+            # sed -i '/default-sample-channels/c\default-sample-channels = 4' ${DAEMON_CONF}
+
+            # sed -i '/set-default-sink/c\set-default-sink alsa_output.platform-soc_audio.analog-stereo' ${DEFAULT_PA}
+            sed -i '/set-default-source/c\set-default-source alsa_input.platform-soc_sound.seeed-source' ${DEFAULT_PA}
+            ;;
+        8)
+            sed -i '/default-sample-format/c\default-sample-format = float32le' ${DAEMON_CONF}
+            sed -i '/default-sample-rate/c\default-sample-rate = 48000' ${DAEMON_CONF}
+            # sed -i '/default-sample-channels/c\default-sample-channels = 8' ${DAEMON_CONF}
+
+            sed -i '/set-default-sink/c\set-default-sink alsa_output.platform-soc_sound.seeed-2ch' ${DEFAULT_PA}
+            sed -i '/set-default-source/c\set-default-source alsa_input.platform-soc_sound.seeed-8ch' ${DEFAULT_PA}
+            ;;
+        *)
+            exit 1
+            ;;
+    esac
+
+    echo "Please reboot to apply the configurations!"
+}
+
+select_array() {
+    ## Clear the stdin buffer
+    read -t 1 -n 10000 discard
+
+    MICTYPE=CIRCULAR_6MIC
+    ## Select Array Type for RPi
+    PS3='Please select the type of your microphone array: '
+    options=("ReSpeaker 6 Mic Array for Raspberry Pi" "ReSpeaker 4 Mic Array for Raspberry Pi" "Others - not supported now")
+    select opt in "${options[@]}" ; do
+        case "$REPLY" in
+            1)
+                MICTYPE=CIRCULAR_6MIC
+                break
+                ;;
+            2)
+                MICTYPE=CIRCULAR_4MIC
+                break
+                ;;
+            3)
+                exit 1
+                ;;
+            *)
+                echo "invalid option $REPLY"
+                ;;
+        esac
+    done
+
+    echo "Your microphone array type is: ${MICTYPE}"
+
+    sudo sed -i -e "s/mic_type = \(.*\)/mic_type = ${MICTYPE}/" /etc/respeaker/respeakerd.conf
+
+}
+
+###################
+
+
+case "$1" in
+    setup-pulse)
+        query_codec
+        setup_pulse
+        ;;
+
+    select-array)
+        query_codec
+        select_array
+        ;;
+
+    *)
+        echo "Usage: respeakerd-pi-tools {setup-pulse|select-array}"
+        echo ""
+        echo "Commands:"
+        echo "  setup-pulse"
+        echo "      Setup udev rules for PulseAudio, to detect the codec of ReSpeaker Pi Hats, setup recommended sample"
+        echo "      format and sample rate, also set the sinks / sources from ReSpeaker codec as the default."
+        echo "  select-array"
+        echo "      select the microphone array type, and write it to the configuration file at /etc/respeaker/respeakerd.conf"
+
+        exit 1
+        ;;
+esac
+
+exit 0

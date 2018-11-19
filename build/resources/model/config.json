@@ -1,0 +1,19 @@
+{
+    "cepstral_lifter": 22.0, 
+    "dither": 1.0, 
+    "energy_floor": 0.0, 
+    "frame_length_ms": 25.0, 
+    "frame_shift_ms": 10.0, 
+    "hotword_key": "hey_snips", 
+    "mel_low_freq": 20, 
+    "model_id": "hey_snips_3.1_2018-04-13T15:27:35_model_0019", 
+    "num_mel_bins": 40, 
+    "num_mfcc": 40, 
+    "preemphasis_coefficient": 0.97, 
+    "raw_energy": true, 
+    "sample_rate": 16000, 
+    "use_energy": false, 
+    "w_max": 100, 
+    "w_smooth": 30, 
+    "window_type": "povey"
+}

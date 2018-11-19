@@ -1,0 +1,42 @@
+Source: respeakerd
+Section: Sound
+Priority: optional
+Maintainer: ReSpeaker Packages Builder <respeaker@seeed.cc>
+Build-Depends:
+	debhelper (>= 10),
+	pkg-config,
+	cmake,
+	librespeaker-dev,
+	libsndfile1-dev,
+	libasound2-dev,
+	libdbus-1-dev
+Standards-Version: 3.9.8
+
+Package: respeakerd
+Architecture: armhf
+Depends:
+	pulseaudio,
+	libmraa1,
+	libupm1,
+	mraa-tools,
+	mpg123,
+	mpv,
+	gstreamer1.0-plugins-good,
+	gstreamer1.0-plugins-bad,
+	gstreamer1.0-plugins-ugly,
+	gir1.2-gstreamer-1.0,
+	python-gi,
+	python-gst-1.0,
+	python-pyaudio,
+	python-mraa,
+	python-upm,
+	${shlibs:Depends}, ${misc:Depends}
+Description: respeakerd is the server application for the microphone array solutions of SEEED, based on librespeaker which combines the audio front-end processing algorithms.
+
+Package: respeakerd-pi-tools
+Architecture: armhf
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: respeakerd-pi-tools is a tool set that used for Raspberry Pi, which can assist the configuration for respeakerd.
+
+
+
