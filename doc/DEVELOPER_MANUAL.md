@@ -43,7 +43,7 @@ $ mkdir -p build && cd build
 $ cp -rf ../debian .
 $ sudo apt-get update
 $ sudo apt-get install -y --allow-downgrades librespeaker-dev/testing  #or `librespeaker-dev/stretch` if you want to build release version
-$ sed -i '6c \\tcmake -DCMAKE_BUILD_TYPE=Release ..' debian/rules  #if you want to build release version
+# sed -i '6c \\tcmake -DCMAKE_BUILD_TYPE=Release ..' debian/rules  #if you want to build release version
 $ chmod a+x debian/pack.sh
 $ debian/pack.sh
 ```
@@ -120,7 +120,7 @@ The configurations in the file have lower priority than the command line options
 We need PulseAudio's `module-pipe-source` module to be loaded. This is handled in `respeakerd_safe`, it will detect if users have configured `respeakerd` to work as `pulse`mode, and will load the module automatically. When we're doing development, we might hope to load the module manually.
 
 ```shell
-pactl load-module module-pipe-source source_name="respeakerd_output" rate=16000 channels=1
+pactl load-module module-pipe-source source_name="respeakerd_output" format=s16le rate=16000 channels=1
 pactl set-default-source respeakerd_output
 ```
 
@@ -133,7 +133,7 @@ $ sudo vim /etc/pulse/default.pa
 Add the following line to the end of the file:
 
 ```text
-load-module module-pipe-source source_name="respeakerd_output" rate=16000 channels=1
+load-module module-pipe-source source_name="respeakerd_output" format=s16le rate=16000 channels=1
 set-default-source respeakerd_output
 ```
 
@@ -143,7 +143,7 @@ When we're doing development, we might want to start `respeakerd` in `pulse` mod
 
 ```
 $ cd PROJECT-ROOT/build
-$ ./respeakerd --mode=pulse --source="alsa_input.platform-sound_0.seeed-8ch" --debug
+$ src/respeakerd --mode=pulse --source="alsa_input.platform-sound_0.seeed-8ch" --debug
 ```
 
 Add other options if you need.
