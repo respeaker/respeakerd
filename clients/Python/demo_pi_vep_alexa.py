@@ -10,6 +10,7 @@ from respeakerd_volume_ctl import VolumeCtl
 from avs.alexa import Alexa
 import sys
 from gpiozero import LED
+from pixel_ring import pixel_ring
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
@@ -22,9 +23,11 @@ def main():
     src = RespeakerdSource()
     alexa = Alexa()
     ctl = VolumeCtl()
-    led = LED(12)
-    led.on()
+    power = LED(5)
+    power.on()
     src.link(alexa)
+
+    pixel_ring.think()
 
     state = 'thinking'
     last_dir = 0
@@ -33,6 +36,7 @@ def main():
         global state
         print("===== on_ready =====\r\n")
         state = 'off'
+        pixel_ring.off()
         src.on_cloud_ready()
 
     def on_listening():
@@ -41,25 +45,29 @@ def main():
         print("===== on_listening =====\r\n")
         if state != 'detected':
             print('The last dir is {}'.format(last_dir))
+            pixel_ring.wakeup(last_dir)
         state = 'listening'
+        pixel_ring.listen()
 
     def on_speaking():
         global state
         print("===== on_speaking =====\r\n")
         state = 'speaking'
         src.on_speak()
+        pixel_ring.speak()
 
     def on_thinking():
         global state
         print("===== on_thinking =====\r\n")
         state = 'thinking'
         src.stop_capture()
+        pixel_ring.think()
 
     def on_off():
         global state
         print("===== on_off =====\r\n")
         state = 'off'
-        led.on()
+        pixel_ring.off()
 
     def on_detected(dir, index):
         global state
@@ -68,7 +76,7 @@ def main():
         state = 'detected'
         last_dir = (dir + 360 - 60)%360
         alexa.listen()
-        led.off()
+        pixel_ring.wakeup(last_dir)
 
     def on_vad():
         # when someone is talking
@@ -112,6 +120,7 @@ def main():
             pass
 
     src.recursive_stop()
+    power.off()
 
 
 if __name__ == '__main__':

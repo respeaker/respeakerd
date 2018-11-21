@@ -6,11 +6,11 @@ import logging
 import signal
 import threading
 from respeakerd_source import RespeakerdSource
+# from respeakerd_volume_ctl import VolumeCtl
 from avs.alexa import Alexa
-from pixel_ring import pixel_ring
-import mraa
 import sys
-
+import mraa
+from pixel_ring import pixel_ring
 
 def main():
     logging.basicConfig(level=logging.DEBUG)
@@ -25,6 +25,7 @@ def main():
 
     src = RespeakerdSource()
     alexa = Alexa()
+    # ctl = VolumeCtl()
 
     src.link(alexa)
 
@@ -76,8 +77,9 @@ def main():
         logging.info('detected hotword:{} at {}`'.format(index, dir))
         state = 'detected'
         last_dir = (dir + 360 - 60)%360
-        pixel_ring.wakeup(last_dir)
         alexa.listen()
+        pixel_ring.wakeup(last_dir)
+        
 
     def on_vad():
         # when someone is talking
@@ -93,6 +95,10 @@ def main():
     alexa.state_listener.on_speaking = on_speaking
     alexa.state_listener.on_finished = on_off
     alexa.state_listener.on_ready = on_ready
+
+    # alexa.Speaker.CallbackSetVolume(ctl.setVolume)
+    # alexa.Speaker.CallbackGetVolume(ctl.getVolume)
+    # alexa.Speaker.CallbackSetMute(ctl.setMute)
 
     src.set_callback(on_detected)
     src.set_vad_callback(on_vad)
@@ -116,7 +122,6 @@ def main():
             pass
 
     src.recursive_stop()
-
     en.write(1)
 
 

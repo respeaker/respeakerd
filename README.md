@@ -112,7 +112,8 @@ $ sudo alsamixer
 
 Tune it like this
 
-![](https://user-images.githubusercontent.com/5130185/47064878-a8065900-d213-11e8-9bc8-ba2d9a59f91d.png)
+<!-- ![](https://user-images.githubusercontent.com/5130185/47064878-a8065900-d213-11e8-9bc8-ba2d9a59f91d.png) -->
+![](https://user-images.githubusercontent.com/18615354/48769337-5e1f0000-ecf6-11e8-8b92-2ec72dcda8b6.png)
 
 Then save the configuration permanetly.
 
