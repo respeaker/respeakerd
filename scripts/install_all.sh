@@ -37,7 +37,7 @@ sudo systemctl is-active -q respeakerd && sudo systemctl stop respeakerd
 ## Install deps
 # python-mraa,python-upm,libmraa1,libupm1,mraa-tools,libdbus-1-3,pulseaudio,mpg123,mpv,gstreamer1.0-plugins-good,gstreamer1.0-plugins-bad,gstreamer1.0-plugins-ugly,gir1.2-gstreamer-1.0,python-gi,python-gst-1.0,python-pyaudio,librespeaker
 sudo apt-get update
-sudo apt-get install -y git pulseaudio python-mraa python-upm libmraa1 libupm1 mraa-tools libdbus-1-3 mpg123 mpv gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0 python-gi python-gst-1.0 python-pyaudio
+sudo apt-get install -y git pulseaudio python-pip python-mraa python-upm libmraa1 libupm1 mraa-tools libdbus-1-3 mpg123 mpv gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-plugins-ugly gir1.2-gstreamer-1.0 python-gi python-gst-1.0 python-pyaudio
 sudo apt-get install -y --reinstall librespeaker
 sudo apt-get install -y --reinstall respeakerd
 sudo pip install avs pixel_ring voice-engine pydbus pulsectl
