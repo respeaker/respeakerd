@@ -101,7 +101,7 @@ respeakerd can work in multiple modes.
     In this mode respeakerd will work as a socket server, and communicate with clients via the [socket protocol](#appendix-a-socket-protocol), audio stream and events like triggered will go through this socket, in JSON format. The socket is an UNIX Domain Socket at `/tmp/respeakerd.sock`. respeakerd will recreate this socket file every time it startup.
 
 2. PulseAudio mode (`-mode=pulse`)
-    respeakerd can stream its output into PulseAudio system in this mode. With the PulseAudio system, the processed audio stream out of respeakerd can then be dispatched to arbitrary consumer applications. To work with PulseAudio, configurations need to be done for PulseAudio, see [4. PulseAudio mode](#pulseaudio-mode). After those configurations, PulseAudio will create a fifo file `/tmp/music.input` to receive audio stream. So if you don't know how to configure PulseAudio to create the fifo file at another path, please don't change the `-fifo_file` parameter of respeakerd, just use the default.
+    respeakerd can stream its output into PulseAudio system in this mode. With the PulseAudio system, the processed audio stream out of respeakerd can then be dispatched to arbitrary consumer applications. To work with PulseAudio, configurations need to be done for PulseAudio, see [4. More about PulseAudio mode](#4-more-about-pulseaudio-mode). After those configurations, PulseAudio will create a fifo file `/tmp/music.input` to receive and dispatch audio stream. So if you don't know how to configure PulseAudio to create the fifo file at another path, please don't change the `-fifo_file` parameter of respeakerd, just use the default.
 
 <!-- 3. Manual DoA mode （`-mode=manual_with_kws` or `-mode=manual_without_kws`)
 
@@ -117,7 +117,29 @@ The configurations in the file have lower priority than the command line options
 
 ### 4.1 PulseAudio configuratin
 
-We need PulseAudio's `module-pipe-source` module to be loaded. This is handled in `respeakerd_safe`, it will detect if users have configured `respeakerd` to work as `pulse`mode, and will load the module automatically. When we're doing development, we might hope to load the module manually.
+#### sample format and rate
+
+If you're using the Pi, the following things should be checked. (We put those modifications into ReSpeaker Core v2's system image, if you're using Core v2, just ignore)
+
+- default-sample-format = float32le
+- default-sample-rate = 48000
+
+Get your current default settings with `pactl info` and check.
+
+For simplifying the configurations, we provide a tool - `respeakerd-pi-tools`, you can install this tool via
+
+```
+sudo apt install respeakerd-pi-tools
+```
+
+And do the configurations with ease
+
+```
+sudo respeakerd-pi-tools setup-pulse
+```
+
+#### pipe-source
+We need PulseAudio's `module-pipe-source` module to be loaded, this will be handled by `respeakerd_safe`, it will detect if users have configured `respeakerd` to work as `pulse`mode, and will load the module automatically. When we're doing development, we might hope to load the module manually.
 
 ```shell
 pactl load-module module-pipe-source source_name="respeakerd_output" format=s16le rate=16000 channels=1
@@ -130,7 +152,7 @@ Or just put into PulseAudio's configuration file.
 $ sudo vim /etc/pulse/default.pa
 ```
 
-Add the following line to the end of the file:
+Add the following lines to the end of this file:
 
 ```text
 load-module module-pipe-source source_name="respeakerd_output" format=s16le rate=16000 channels=1
